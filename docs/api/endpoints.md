@@ -119,7 +119,6 @@ Permission shorthand:
 | `GET` | `/api/v1/tenants/{tenant_id}/ingestion-sources/{source_id}` | `Tenant Admin` or `Analyst` | Return one ingestion source and its operational status. |
 | `PATCH` | `/api/v1/tenants/{tenant_id}/ingestion-sources/{source_id}` | `Tenant Admin` | Update non-secret ingestion source settings or status. |
 | `GET` | `/api/v1/tenants/{tenant_id}/ingestion-jobs` | `Tenant Admin`, `Analyst`, or `Auditor` | List processing jobs with filters for status, dataset, source, date range, and failure category. |
-| `POST` | `/api/v1/tenants/{tenant_id}/ingestion-jobs` | `Analyst` | Start an ingestion, validation, or normalization job for an eligible dataset version or source. |
 | `GET` | `/api/v1/tenants/{tenant_id}/ingestion-jobs/{job_id}` | `Tenant Admin`, `Analyst`, or `Auditor` | Return job progress, counters, timing, failure reason, and links to related dataset versions or quality reports. |
 | `POST` | `/api/v1/tenants/{tenant_id}/ingestion-jobs/{job_id}/retry` | `Analyst` | Retry an eligible failed job with a new attempt number and audit trail. |
 | `GET` | `/api/v1/tenants/{tenant_id}/ingestion-jobs/{job_id}/errors` | `Tenant Admin`, `Analyst`, or `Auditor` | List row-level or record-level errors for a validation or ingestion job. |
