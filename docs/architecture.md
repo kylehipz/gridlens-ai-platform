@@ -54,3 +54,7 @@ Workers belong to the service that owns the workflow and data they mutate.
   generate evaluation-linked anomalies.
 * Insights and Reporting workers generate reports, evidence packages, exports,
   and downloadable artifacts.
+
+# High-level Component and Dependency Diagram
+<img width="1521" height="1093" alt="image" src="https://github.com/user-attachments/assets/3ad0fa2d-d7cf-4af0-8f7a-87b04a225d33" />
+
