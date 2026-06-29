@@ -3,8 +3,13 @@ from typing import Iterable, Protocol
 
 
 class TenantOwned(Protocol):
-    id: str
-    tenant_id: str
+    @property
+    def id(self) -> str:
+        ...
+
+    @property
+    def tenant_id(self) -> str:
+        ...
 
 
 @dataclass(frozen=True)

@@ -1,24 +1,184 @@
 services:
-  api:
-    build:
-      target: dev
-    environment:
-      APP_ENV: development
-      DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
-    command: ["python", "-m", "gridlens_api_gateway.main"]
-    volumes:
-      - ./services/api-gateway/src:/app/src:ro
-      - ${HOME}/.aws:/home/app/.aws:ro
-    restart: unless-stopped
-
-  worker:
+  identity-tenant-service:
     build:
       target: dev
     environment:
       APP_ENV: development
       WORKER_HEARTBEAT_SECONDS: ${WORKER_HEARTBEAT_SECONDS:-10}
-    command: ["python", "-m", "gridlens_local_runtime_worker.main"]
+      DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
+    command:
+      - uvicorn
+      - gridlens_identity_tenant_service.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --reload
     volumes:
-      - ./workers/local-runtime-worker/src:/app/src:ro
+      - ./services/identity-tenant-service/src:/app/src:ro
+      - ${HOME}/.aws:/home/app/.aws:ro
+    restart: unless-stopped
+
+  data-operations-service:
+    build:
+      target: dev
+    environment:
+      APP_ENV: development
+      WORKER_HEARTBEAT_SECONDS: ${WORKER_HEARTBEAT_SECONDS:-10}
+      DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
+    command:
+      - uvicorn
+      - gridlens_data_operations_service.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --reload
+    volumes:
+      - ./services/data-operations-service/src:/app/src:ro
+      - ${HOME}/.aws:/home/app/.aws:ro
+    restart: unless-stopped
+
+  assistant-service:
+    build:
+      target: dev
+    environment:
+      APP_ENV: development
+      WORKER_HEARTBEAT_SECONDS: ${WORKER_HEARTBEAT_SECONDS:-10}
+      DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
+    command:
+      - uvicorn
+      - gridlens_assistant_service.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --reload
+    volumes:
+      - ./services/assistant-service/src:/app/src:ro
+      - ${HOME}/.aws:/home/app/.aws:ro
+    restart: unless-stopped
+
+  program-evaluation-service:
+    build:
+      target: dev
+    environment:
+      APP_ENV: development
+      WORKER_HEARTBEAT_SECONDS: ${WORKER_HEARTBEAT_SECONDS:-10}
+      DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
+    command:
+      - uvicorn
+      - gridlens_program_evaluation_service.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --reload
+    volumes:
+      - ./services/program-evaluation-service/src:/app/src:ro
+      - ${HOME}/.aws:/home/app/.aws:ro
+    restart: unless-stopped
+
+  insights-reporting-service:
+    build:
+      target: dev
+    environment:
+      APP_ENV: development
+      DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
+    command:
+      - uvicorn
+      - gridlens_insights_reporting_service.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --reload
+    volumes:
+      - ./services/insights-reporting-service/src:/app/src:ro
+      - ${HOME}/.aws:/home/app/.aws:ro
+    restart: unless-stopped
+
+  governance-service:
+    build:
+      target: dev
+    environment:
+      APP_ENV: development
+      DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
+    command:
+      - uvicorn
+      - gridlens_governance_service.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --reload
+    volumes:
+      - ./services/governance-service/src:/app/src:ro
+      - ${HOME}/.aws:/home/app/.aws:ro
+    restart: unless-stopped
+
+  alerts-anomalies-service:
+    build:
+      target: dev
+    environment:
+      APP_ENV: development
+      DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
+    command:
+      - uvicorn
+      - gridlens_alerts_anomalies_service.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --reload
+    volumes:
+      - ./services/alerts-anomalies-service/src:/app/src:ro
+      - ${HOME}/.aws:/home/app/.aws:ro
+    restart: unless-stopped
+
+  kong:
+    restart: unless-stopped
+
+  data-operations-worker:
+    build:
+      target: dev
+    environment:
+      APP_ENV: development
+    command: ["python", "-m", "gridlens_data_operations_service.workers.main"]
+    volumes:
+      - ./services/data-operations-service/src:/app/src:ro
+      - ${HOME}/.aws:/home/app/.aws:ro
+    restart: unless-stopped
+
+  assistant-worker:
+    build:
+      target: dev
+    environment:
+      APP_ENV: development
+    command: ["python", "-m", "gridlens_assistant_service.workers.main"]
+    volumes:
+      - ./services/assistant-service/src:/app/src:ro
+      - ${HOME}/.aws:/home/app/.aws:ro
+    restart: unless-stopped
+
+  program-evaluation-worker:
+    build:
+      target: dev
+    environment:
+      APP_ENV: development
+    command: ["python", "-m", "gridlens_program_evaluation_service.workers.main"]
+    volumes:
+      - ./services/program-evaluation-service/src:/app/src:ro
+      - ${HOME}/.aws:/home/app/.aws:ro
+    restart: unless-stopped
+
+  insights-reporting-worker:
+    build:
+      target: dev
+    environment:
+      APP_ENV: development
+    command: ["python", "-m", "gridlens_insights_reporting_service.workers.main"]
+    volumes:
+      - ./services/insights-reporting-service/src:/app/src:ro
       - ${HOME}/.aws:/home/app/.aws:ro
     restart: unless-stopped

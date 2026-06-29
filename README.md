@@ -9,9 +9,9 @@ reports.
 ## Repository Status
 
 This repository is currently in the foundation stage. It contains product and
-architecture documentation plus contributor scaffolding. Implementation
-directories such as `services/`, `libs/`, `frontend/`, `infra/`, `scripts/`,
-and `tests/` are planned and should be added as the corresponding work begins.
+architecture documentation, shared library scaffolds, backend service scaffolds,
+local infrastructure, and contributor tooling. Product behavior is still added
+incrementally behind the documented service boundaries.
 
 Use the root commands in this README as the stable contributor entry point. They
 currently provide lightweight checks for the documentation-first repository and
@@ -38,12 +38,17 @@ The local database is PostgreSQL 16 with PGVector enabled on first startup. Run
 `make test-local-db` while the stack is running to verify PostgreSQL
 connectivity, the `app` schema, and the `vector` extension.
 
+CI runs type checking, linting, offline tests, and live database smoke tests
+against a PostgreSQL/PGVector service container. AWS-facing settings in CI use
+mock values only.
+
 ## Commands
 
 | Command | Purpose |
 |---|---|
 | `make setup` | Create `.venv`, install development dependencies from `pyproject.toml`, verify baseline files, and print setup guidance. |
-| `make dev` | Start PostgreSQL, the scaffold API, and the scaffold worker with the development Compose overlay. |
+| `make dev` | Start PostgreSQL, Kong, all scaffolded FastAPI services, and implemented service workers with the development Compose overlay. |
+| `make dev-gateway` | Start only Kong and its current upstream health service. |
 | `make down` | Stop the local Compose stack while preserving named volumes. |
 | `make reset-local-state` | Stop the stack and remove named local volumes so database init scripts rerun on next start. |
 | `make test` | Run the default offline repository test targets. |
@@ -52,6 +57,10 @@ connectivity, the `app` schema, and the `vector` extension.
 | `make test-libs` | Run all shared library tests with pytest. |
 | `make test-frontend` | Run frontend tests when `frontend/` exists; placeholder today. |
 | `make test-local-db` | Smoke-test the running local PostgreSQL database, app schema, and PGVector extension. |
+| `make bootstrap-live-db` | Initialize a live PostgreSQL database with the app role, app schema, and PGVector extension. |
+| `make test-live-db` | Smoke-test a live PostgreSQL database reachable through `POSTGRES_HOST` and `POSTGRES_PORT`, or through `POSTGRES_CONTAINER_ID`. |
+| `make typecheck` | Run Pyright type checking. |
+| `make run-identity-tenant` | Run the identity tenant FastAPI service directly on the host without Kong. |
 | `make lint` | Run Ruff for backend Python linting plus repository hygiene checks. |
 | `make format` | Placeholder for future formatters. |
 | `make migrate` | Placeholder for future database migrations. |

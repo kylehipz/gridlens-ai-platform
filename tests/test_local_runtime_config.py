@@ -4,6 +4,23 @@ from unittest import TestCase
 
 ROOT = Path(__file__).resolve().parents[1]
 
+API_SERVICES = [
+    "identity-tenant-service",
+    "data-operations-service",
+    "assistant-service",
+    "program-evaluation-service",
+    "insights-reporting-service",
+    "governance-service",
+    "alerts-anomalies-service",
+]
+
+WORKER_SERVICES = [
+    "data-operations-worker",
+    "assistant-worker",
+    "program-evaluation-worker",
+    "insights-reporting-worker",
+]
+
 
 class LocalRuntimeConfigTests(TestCase):
     def test_env_example_uses_managed_aws_placeholders_not_emulators(self) -> None:
@@ -53,36 +70,90 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertNotIn("${API_PORT:-8000}:8000", compose)
         self.assertNotIn("API_PORT=8000", env_example)
 
+    def test_kong_declarative_config_routes_api_health(self) -> None:
+        compose = (ROOT / "docker-compose.yml").read_text()
+        kong_config = (ROOT / "infra" / "local" / "kong" / "kong.yml").read_text()
+
+        self.assertIn("KONG_DATABASE: \"off\"", compose)
+        self.assertIn("KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml", compose)
+        self.assertIn("./infra/local/kong/kong.yml:/kong/declarative/kong.yml:ro", compose)
+        self.assertIn("_format_version: \"3.0\"", kong_config)
+        self.assertIn("name: gridlens-health-upstream", kong_config)
+        self.assertIn("url: http://identity-tenant-service:8000/health", kong_config)
+        self.assertIn("/api/v1/health", kong_config)
+
+    def test_compose_starts_scaffold_services_and_workers(self) -> None:
+        compose = (ROOT / "docker-compose.yml").read_text()
+        dev_compose = (ROOT / "docker-compose.dev.yml").read_text()
+        merged_compose = f"{compose}\n{dev_compose}"
+
+        self.assertNotIn("\n  api:\n", merged_compose)
+        self.assertNotIn("\n  api-gateway:\n", merged_compose)
+        self.assertNotIn("\n  worker:\n", merged_compose)
+        self.assertNotIn("services/api-gateway/Dockerfile", merged_compose)
+        self.assertNotIn("workers/local-runtime-worker/Dockerfile", merged_compose)
+
+        for service in API_SERVICES:
+            with self.subTest(service=service):
+                self.assertIn(f"\n  {service}:\n", compose)
+                self.assertIn(f"\n  {service}:\n", dev_compose)
+                self.assertIn(f"dockerfile: services/{service}/Dockerfile", compose)
+                self.assertIn(f"./services/{service}/src:/app/src:ro", dev_compose)
+
+        for worker in WORKER_SERVICES:
+            with self.subTest(worker=worker):
+                self.assertIn(f"\n  {worker}:\n", compose)
+                self.assertIn(f"\n  {worker}:\n", dev_compose)
+
     def test_dev_overlay_runs_modules_without_devtools(self) -> None:
         dev_compose = (ROOT / "docker-compose.dev.yml").read_text()
-        api_dockerfile = (ROOT / "services" / "api-gateway" / "Dockerfile").read_text()
-        worker_dockerfile = (
-            ROOT / "workers" / "local-runtime-worker" / "Dockerfile"
+        identity_dockerfile = (
+            ROOT / "services" / "identity-tenant-service" / "Dockerfile"
+        ).read_text()
+        data_operations_dockerfile = (
+            ROOT / "services" / "data-operations-service" / "Dockerfile"
         ).read_text()
         pyproject = (ROOT / "pyproject.toml").read_text()
 
         self.assertNotIn("debugpy", pyproject)
-        self.assertIn("pip install --no-cache-dir \".[dev]\"", api_dockerfile)
-        self.assertIn("pip install --no-cache-dir \".[dev]\"", worker_dockerfile)
-        self.assertNotIn("devtools", api_dockerfile)
-        self.assertNotIn("devtools", worker_dockerfile)
+        self.assertIn("pip install --no-cache-dir \".[dev]\"", identity_dockerfile)
+        self.assertIn("pip install --no-cache-dir \".[dev]\"", data_operations_dockerfile)
+        self.assertNotIn("devtools", identity_dockerfile)
+        self.assertNotIn("devtools", data_operations_dockerfile)
         self.assertNotIn("/app/devtools/reload_debug.py", dev_compose)
-        self.assertIn("gridlens_api_gateway.main", dev_compose)
-        self.assertIn("gridlens_local_runtime_worker.main", dev_compose)
+        self.assertIn("gridlens_identity_tenant_service.main", dev_compose)
+        self.assertIn("gridlens_identity_tenant_service.main:app", dev_compose)
+        self.assertIn("gridlens_data_operations_service.workers.main", dev_compose)
+        self.assertNotIn("gridlens_api_gateway", dev_compose)
+        self.assertNotIn("gridlens_local_runtime_worker.main", dev_compose)
+
+    def test_makefile_exposes_gateway_run_commands(self) -> None:
+        makefile = (ROOT / "Makefile").read_text()
+
+        self.assertIn("dev-gateway:", makefile)
+        self.assertIn("up --build identity-tenant-service kong", makefile)
+        self.assertIn("run-identity-tenant:", makefile)
+        self.assertIn("uvicorn gridlens_identity_tenant_service.main:app", makefile)
+        self.assertNotIn("run-api:", makefile)
+        self.assertNotIn("gridlens_api_gateway", makefile)
 
     def test_docker_builds_use_root_pyproject_without_local_artifacts(self) -> None:
         compose = (ROOT / "docker-compose.yml").read_text()
         dockerignore = (ROOT / ".dockerignore").read_text()
-        api_dockerfile = (ROOT / "services" / "api-gateway" / "Dockerfile").read_text()
-        worker_dockerfile = (
-            ROOT / "workers" / "local-runtime-worker" / "Dockerfile"
+        identity_dockerfile = (
+            ROOT / "services" / "identity-tenant-service" / "Dockerfile"
+        ).read_text()
+        data_operations_dockerfile = (
+            ROOT / "services" / "data-operations-service" / "Dockerfile"
         ).read_text()
 
         self.assertIn("context: .", compose)
-        self.assertIn("dockerfile: services/api-gateway/Dockerfile", compose)
-        self.assertIn("dockerfile: workers/local-runtime-worker/Dockerfile", compose)
-        self.assertIn("COPY pyproject.toml ./", api_dockerfile)
-        self.assertIn("COPY pyproject.toml ./", worker_dockerfile)
+        self.assertIn("dockerfile: services/identity-tenant-service/Dockerfile", compose)
+        self.assertIn("dockerfile: services/data-operations-service/Dockerfile", compose)
+        self.assertNotIn("dockerfile: services/api-gateway/Dockerfile", compose)
+        self.assertNotIn("dockerfile: workers/local-runtime-worker/Dockerfile", compose)
+        self.assertIn("COPY pyproject.toml ./", identity_dockerfile)
+        self.assertIn("COPY pyproject.toml ./", data_operations_dockerfile)
         self.assertIn(".venv", dockerignore)
         self.assertIn(".git", dockerignore)
 
@@ -111,3 +182,27 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertNotIn("LIVE_AWS", makefile)
         self.assertNotIn("AWS_NETWORK", makefile)
         self.assertIsNone(import_pattern.search(tests))
+
+    def test_ci_runs_typecheck_lint_and_mocked_aws_database_checks(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+
+        self.assertIn("image: pgvector/pgvector:pg16", workflow)
+        self.assertIn("run: make typecheck", workflow)
+        self.assertIn("run: make lint", workflow)
+        self.assertIn("run: make bootstrap-live-db", workflow)
+        self.assertIn("run: make test-live-db", workflow)
+        self.assertIn("POSTGRES_CONTAINER_ID=$container_id", workflow)
+        self.assertIn('AWS_EC2_METADATA_DISABLED: "true"', workflow)
+        self.assertIn("AWS_ACCESS_KEY_ID: mock", workflow)
+        self.assertIn("AWS_SECRET_ACCESS_KEY: mock", workflow)
+        self.assertIn("BEDROCK_TEXT_MODEL_ID: mock-text-model", workflow)
+
+    def test_makefile_exposes_live_database_targets_for_ci(self) -> None:
+        makefile = (ROOT / "Makefile").read_text()
+
+        self.assertIn("bootstrap-live-db:", makefile)
+        self.assertIn("test-live-db:", makefile)
+        self.assertIn("POSTGRES_CONTAINER_ID ?=", makefile)
+        self.assertIn("docker exec -e PGPASSWORD", makefile)
+        self.assertIn("CREATE EXTENSION IF NOT EXISTS vector", makefile)
+        self.assertIn("app.live_smoke_check", makefile)

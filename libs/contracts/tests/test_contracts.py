@@ -1,6 +1,8 @@
 import re
 import unittest
+from collections.abc import Mapping
 from pathlib import Path
+from typing import cast
 
 from gridlens_contracts.audit import AuditAction, is_dotted_action
 from gridlens_contracts.errors import ErrorEnvelope
@@ -86,7 +88,10 @@ class EnvelopeTests(unittest.TestCase):
             ListResponse(items=[{"audit_id": "a1"}], pagination=Pagination.from_page(limit=25, offset=0, total_count=1)).to_dict(),
             ListResponse(items=[{"evaluation_id": "e1"}], pagination=Pagination.from_page(limit=25, offset=0, total_count=50)).to_dict(),
         ]
-        field_sets = {tuple(response["pagination"].keys()) for response in responses}
+        field_sets = {
+            tuple(cast(Mapping[str, object], response["pagination"]).keys())
+            for response in responses
+        }
         self.assertEqual(1, len(field_sets))
         self.assertEqual(("limit", "offset", "total_count", "has_next", "next_offset"), next(iter(field_sets)))
 

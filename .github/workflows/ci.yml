@@ -12,17 +12,76 @@ jobs:
   repository-checks:
     name: Repository checks
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: gridlens_dev
+          POSTGRES_USER: gridlens
+          POSTGRES_PASSWORD: gridlens_local
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gridlens -d gridlens_dev"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      SYSTEM_PYTHON: python
+      PYTHON: .venv/bin/python
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: gridlens_dev
+      POSTGRES_SUPERUSER: gridlens
+      POSTGRES_SUPERUSER_PASSWORD: gridlens_local
+      POSTGRES_USER: gridlens_app
+      POSTGRES_PASSWORD: gridlens_app_local
+      DATABASE_URL: postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_REGION: us-east-1
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: mock
+      AWS_SECRET_ACCESS_KEY: mock
+      AWS_SESSION_TOKEN: mock
+      AWS_SDK_LOAD_CONFIG: "0"
+      COGNITO_USER_POOL_ID: mock-user-pool
+      COGNITO_CLIENT_ID: mock-client
+      S3_BUCKET_NAME: mock-gridlens-artifacts
+      SQS_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/000000000000/mock-gridlens-jobs
+      BEDROCK_TEXT_MODEL_ID: mock-text-model
+      BEDROCK_EMBEDDING_MODEL_ID: mock-embedding-model
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
       - name: Setup
         run: make setup
 
-      - name: Test
-        run: make test
+      - name: Typecheck
+        run: make typecheck
 
       - name: Lint
         run: make lint
+
+      - name: Offline tests
+        run: make test
+
+      - name: Locate PostgreSQL service container
+        run: |
+          container_id="$(docker ps --filter "ancestor=pgvector/pgvector:pg16" --format "{{.ID}}" | head -n 1)"
+          test -n "$container_id"
+          echo "POSTGRES_CONTAINER_ID=$container_id" >> "$GITHUB_ENV"
+
+      - name: Bootstrap live database
+        run: make bootstrap-live-db
+
+      - name: Live database tests
+        run: make test-live-db
