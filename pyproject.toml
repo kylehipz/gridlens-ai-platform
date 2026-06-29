@@ -8,7 +8,8 @@ version = "0.0.0"
 description = "GridLens AI Platform foundation workspace"
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.115,<1",
+    "fastapi>=0.115,<0.116",
+    "httpx>=0.27,<1",
     "uvicorn[standard]>=0.32,<1",
 ]
 
@@ -26,6 +27,13 @@ addopts = "-ra"
 python_files = ["test_*.py"]
 testpaths = [
     "services/api-gateway/tests",
+    "services/identity-tenant-service/tests",
+    "services/data-operations-service/tests",
+    "services/assistant-service/tests",
+    "services/program-evaluation-service/tests",
+    "services/insights-reporting-service/tests",
+    "services/governance-service/tests",
+    "services/alerts-anomalies-service/tests",
     "workers/local-runtime-worker/tests",
     "tests",
     "libs/contracts/tests",
@@ -40,6 +48,13 @@ testpaths = [
 ]
 pythonpath = [
     "services/api-gateway/src",
+    "services/identity-tenant-service/src",
+    "services/data-operations-service/src",
+    "services/assistant-service/src",
+    "services/program-evaluation-service/src",
+    "services/insights-reporting-service/src",
+    "services/governance-service/src",
+    "services/alerts-anomalies-service/src",
     "workers/local-runtime-worker/src",
     "libs/contracts/src",
     "libs/config/src",

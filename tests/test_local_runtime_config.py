@@ -53,6 +53,18 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertNotIn("${API_PORT:-8000}:8000", compose)
         self.assertNotIn("API_PORT=8000", env_example)
 
+    def test_kong_declarative_config_routes_api_health(self) -> None:
+        compose = (ROOT / "docker-compose.yml").read_text()
+        kong_config = (ROOT / "infra" / "local" / "kong" / "kong.yml").read_text()
+
+        self.assertIn("KONG_DATABASE: \"off\"", compose)
+        self.assertIn("KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml", compose)
+        self.assertIn("./infra/local/kong/kong.yml:/kong/declarative/kong.yml:ro", compose)
+        self.assertIn("_format_version: \"3.0\"", kong_config)
+        self.assertIn("name: gridlens-health-upstream", kong_config)
+        self.assertIn("url: http://api:8000/health", kong_config)
+        self.assertIn("/api/v1/health", kong_config)
+
     def test_dev_overlay_runs_modules_without_devtools(self) -> None:
         dev_compose = (ROOT / "docker-compose.dev.yml").read_text()
         api_dockerfile = (ROOT / "services" / "api-gateway" / "Dockerfile").read_text()

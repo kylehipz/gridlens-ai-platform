@@ -13,11 +13,11 @@ RUN pip install --no-cache-dir ".[dev]"
 COPY services/api-gateway/src ./src
 USER app
 EXPOSE 8000
-CMD ["python", "-m", "gridlens_api_gateway.main"]
+CMD ["uvicorn", "gridlens_api_gateway.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 FROM base AS runtime
 RUN pip install --no-cache-dir .
 COPY services/api-gateway/src ./src
 USER app
 EXPOSE 8000
-CMD ["python", "-m", "gridlens_api_gateway.main"]
+CMD ["uvicorn", "gridlens_api_gateway.main:app", "--host", "0.0.0.0", "--port", "8000"]
