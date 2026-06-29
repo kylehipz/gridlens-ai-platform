@@ -46,10 +46,21 @@ class EnvelopeTests(unittest.TestCase):
             code="authorization_denied",
             message="Access denied.",
             request_id="req_123",
-            details={"resource": "dataset", "sql": "select * from secret", "token": "hidden"},
+            details={
+                "resource": "dataset",
+                "sql": "select * from secret",
+                "nested": {
+                    "prompt": "unsafe",
+                    "safe": "kept",
+                    "items": [{"token": "hidden", "field": "visible"}],
+                },
+            },
         ).to_dict()
         self.assertEqual({"code", "message", "request_id", "details"}, set(payload))
-        self.assertEqual({"resource": "dataset"}, payload["details"])
+        self.assertEqual(
+            {"resource": "dataset", "nested": {"safe": "kept", "items": [{"field": "visible"}]}},
+            payload["details"],
+        )
 
     def test_list_responses_share_pagination_fields(self):
         responses = [

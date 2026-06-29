@@ -16,6 +16,18 @@ SENSITIVE_DETAIL_KEYS = {
 }
 
 
+def sanitize_details(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: sanitize_details(nested)
+            for key, nested in value.items()
+            if key.lower() not in SENSITIVE_DETAIL_KEYS
+        }
+    if isinstance(value, list):
+        return [sanitize_details(item) for item in value]
+    return value
+
+
 @dataclass(frozen=True)
 class ErrorEnvelope:
     code: str
@@ -30,9 +42,5 @@ class ErrorEnvelope:
             "request_id": self.request_id,
         }
         if self.details:
-            payload["details"] = {
-                key: value
-                for key, value in self.details.items()
-                if key.lower() not in SENSITIVE_DETAIL_KEYS
-            }
+            payload["details"] = sanitize_details(self.details)
         return payload
