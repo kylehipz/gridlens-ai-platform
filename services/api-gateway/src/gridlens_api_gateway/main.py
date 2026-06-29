@@ -2,7 +2,11 @@ import json
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from fastapi import FastAPI
+
 from gridlens_api_gateway.config import load_settings
+
+app = FastAPI(title="GridLens API Gateway Support Service")
 
 
 class HealthHandler(BaseHTTPRequestHandler):

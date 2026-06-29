@@ -7,7 +7,10 @@ name = "gridlens-ai-platform"
 version = "0.0.0"
 description = "GridLens AI Platform foundation workspace"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.32,<1",
+]
 
 [project.optional-dependencies]
 dev = [
