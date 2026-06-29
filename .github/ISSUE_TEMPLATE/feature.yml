@@ -1,0 +1,46 @@
+name: Feature
+description: Propose a product, platform, or developer-facing feature.
+title: "[Feature]: "
+labels:
+  - feature
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What should change, and why?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: List the observable conditions that must be true when done.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: qa
+    attributes:
+      label: QA and Test Notes
+      description: Include expected test coverage, manual QA, screenshots, or fixtures.
+    validations:
+      required: true
+  - type: textarea
+    id: tenant-isolation
+    attributes:
+      label: Tenant Isolation and Security Impact
+      description: Describe tenant-scoped data, authorization, secrets, audit, or AI/RAG guardrails affected by this work.
+      placeholder: "No tenant-isolation impact."
+    validations:
+      required: true
+  - type: textarea
+    id: docs
+    attributes:
+      label: Documentation Impact
+      description: List docs that should be created or updated.
+      placeholder: "None."
+    validations:
+      required: false

@@ -1,0 +1,38 @@
+name: Documentation
+description: Request documentation for behavior, architecture, commands, or conventions.
+title: "[Docs]: "
+labels:
+  - documentation
+body:
+  - type: textarea
+    id: gap
+    attributes:
+      label: Documentation Gap
+      description: What is missing, stale, or unclear?
+    validations:
+      required: true
+  - type: textarea
+    id: target-reader
+    attributes:
+      label: Target Reader
+      description: Who needs this documentation?
+      placeholder: "New contributor, reviewer, operator, frontend engineer, backend engineer..."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: What should the documentation include?
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: qa
+    attributes:
+      label: Review or QA Notes
+      description: How should reviewers validate accuracy?
+    validations:
+      required: false

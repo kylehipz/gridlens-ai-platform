@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fix PR Findings"
+  short_description: "Fix PR review findings as commits"
+  default_prompt: "Use $fix-pr-findings to read the PR review handover and fix each finding as a separate checkpoint commit."

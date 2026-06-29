@@ -1,0 +1,46 @@
+name: Bug
+description: Report incorrect behavior, regression, or operational risk.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: Current Behavior
+      description: What is happening now?
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What should happen instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction Steps
+      description: Provide commands, inputs, environment notes, or screenshots.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: qa
+    attributes:
+      label: QA and Regression Coverage
+      description: What test or manual check should prevent this from returning?
+    validations:
+      required: true
+  - type: textarea
+    id: tenant-isolation
+    attributes:
+      label: Tenant Isolation and Security Impact
+      description: Note whether data exposure, auth, audit, secrets, or AI/RAG retrieval may be affected.
+      placeholder: "No tenant-isolation impact."
+    validations:
+      required: true
