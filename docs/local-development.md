@@ -158,10 +158,13 @@ Expected usage:
 
 ```sh
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+make dev
 ```
 
-When stable Makefile targets exist, prefer wrapping this command in a documented
-target such as `make dev`.
+Prefer the Makefile target for day-to-day work. `make down` stops containers and
+preserves named volumes. `make reset-local-state` is the explicit destructive
+reset path and removes local named volumes so PostgreSQL init scripts rerun on
+the next startup.
 
 ## Debugging Ports
 

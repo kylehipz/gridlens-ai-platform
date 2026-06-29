@@ -22,12 +22,12 @@ can be expanded behind the same target names as source code lands.
 ```sh
 make setup
 make test
+make dev
 ```
 
-`make setup` prints the current setup guidance and verifies that the repository
-has the expected baseline files. `make test` succeeds in the current docs-only
-state and delegates to backend and frontend placeholder targets until those
-subsystems exist.
+`make setup` prints setup guidance and verifies that the repository has the
+expected baseline files. `make test` runs the default offline checks without AWS
+credentials or an active SSO session. `make dev` starts the local Compose stack.
 
 For local configuration, copy or inspect `.env.example` before running services.
 It contains public-safe placeholders only. Local runtime AWS access uses managed
@@ -39,14 +39,18 @@ profile; no AWS emulator endpoints or credentials are required by default.
 | Command | Purpose |
 |---|---|
 | `make setup` | Verify baseline files and print setup guidance. |
-| `make test` | Run the available repository test targets. |
-| `make test-backend` | Run backend tests when `services/` exists; placeholder today. |
+| `make dev` | Start PostgreSQL, the scaffold API, and the scaffold worker with the development Compose overlay. |
+| `make down` | Stop the local Compose stack while preserving named volumes. |
+| `make reset-local-state` | Stop the stack and remove named local volumes so database init scripts rerun on next start. |
+| `make test` | Run the default offline repository test targets. |
+| `make test-backend` | Run Python scaffold service and worker tests. |
 | `make test-frontend` | Run frontend tests when `frontend/` exists; placeholder today. |
+| `make test-local-db` | Smoke-test the running local PostgreSQL database, app schema, and PGVector extension. |
 | `make lint` | Check repository hygiene such as conflict markers and whitespace, including committed PR diff whitespace in CI. |
 | `make format` | Placeholder for future formatters. |
 | `make migrate` | Placeholder for future database migrations. |
 | `make seed` | Placeholder for future synthetic development seed data. |
-| `make run` | Placeholder for the future local application stack. |
+| `make run` | Alias for `make dev`. |
 
 ## Documentation Map
 

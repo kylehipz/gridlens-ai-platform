@@ -1,22 +1,37 @@
-.PHONY: setup test test-backend test-frontend lint format migrate seed run
+PYTHON ?= python3
+COMPOSE ?= docker compose
+COMPOSE_BASE := -f docker-compose.yml
+COMPOSE_DEV := -f docker-compose.yml -f docker-compose.dev.yml
+PROJECT_NAME ?= gridlens-local
+
+.PHONY: setup dev down reset-local-state test test-backend test-frontend test-local-db lint format migrate seed run
 
 setup:
-	@printf '%s\n' 'GridLens setup'
-	@printf '%s\n' 'Current state: documentation and repository scaffolding only.'
+	@printf '%s\n' 'GridLens local setup'
 	@test -f README.md
-	@test -f .env.example || printf '%s\n' 'Note: .env.example is added by the repository hygiene checkpoint.'
-	@printf '%s\n' 'No package installation is required yet.'
-	@printf '%s\n' 'Next: inspect .env.example, then run make test.'
+	@test -f .env.example
+	@test -f docker-compose.yml
+	@test -f docker-compose.dev.yml
+	@printf '%s\n' 'Optional: copy .env.example to .env and adjust development-only placeholders.'
+	@printf '%s\n' 'Run make test for offline checks or make dev for the local runtime.'
+
+dev:
+	$(COMPOSE) $(COMPOSE_DEV) up --build
+
+run: dev
+
+down:
+	$(COMPOSE) $(COMPOSE_BASE) down
+
+reset-local-state:
+	$(COMPOSE) $(COMPOSE_BASE) down --volumes --remove-orphans
 
 test: test-backend test-frontend
-	@printf '%s\n' 'Repository test placeholders completed.'
+	@printf '%s\n' 'Default offline tests completed.'
 
 test-backend:
-	@if test -d services; then \
-		printf '%s\n' 'Backend services directory exists, but no backend test runner is configured yet.'; \
-	else \
-		printf '%s\n' 'No services/ directory yet; backend tests are pending implementation work.'; \
-	fi
+	$(PYTHON) -m unittest discover -s services/api-gateway/tests -p 'test_*.py'
+	$(PYTHON) -m unittest discover -s workers/local-runtime-worker/tests -p 'test_*.py'
 
 test-frontend:
 	@if test -d frontend; then \
@@ -25,10 +40,29 @@ test-frontend:
 		printf '%s\n' 'No frontend/ directory yet; frontend tests are pending implementation work.'; \
 	fi
 
+test-local-db:
+	@printf '%s\n' 'Checking local PostgreSQL, app schema, and PGVector...'
+	$(COMPOSE) $(COMPOSE_BASE) exec -T postgres psql \
+		-U "$${POSTGRES_SUPERUSER:-gridlens}" \
+		-d "$${POSTGRES_DB:-gridlens_dev}" \
+		-v ON_ERROR_STOP=1 \
+		-c "select extname from pg_extension where extname = 'vector';" \
+		-c "select schema_name from information_schema.schemata where schema_name = 'app';"
+	$(COMPOSE) $(COMPOSE_BASE) exec -T postgres psql \
+		-U "$${POSTGRES_USER:-gridlens_app}" \
+		-d "$${POSTGRES_DB:-gridlens_dev}" \
+		-v ON_ERROR_STOP=1 \
+		-c "create table if not exists app.local_smoke_check (id integer primary key);" \
+		-c "drop table app.local_smoke_check;"
+
 lint:
 	@printf '%s\n' 'Checking repository hygiene...'
 	@if git grep -n -I -E '^(<<<<<<<|=======|>>>>>>>)' -- .; then \
 		printf '%s\n' 'Unresolved merge conflict marker found.'; \
+		exit 1; \
+	fi
+	@if git grep -n -I -E 'AWS_(ACCESS_KEY_ID|SECRET_ACCESS_KEY|SESSION_TOKEN)=|AKIA[0-9A-Z]{16}' -- . ':!.git' ':!.handover'; then \
+		printf '%s\n' 'Potential committed AWS credential found.'; \
 		exit 1; \
 	fi
 	@if test -n "$$GITHUB_BASE_REF"; then \
@@ -48,10 +82,7 @@ format:
 	@printf '%s\n' 'No formatter is configured yet. Future Python and frontend formatters should run here.'
 
 migrate:
-	@printf '%s\n' 'No database migrations exist yet. Future migration commands should run here.'
+	@printf '%s\n' 'No database migrations exist yet. Local PostgreSQL bootstrap runs only on an empty data volume.'
 
 seed:
 	@printf '%s\n' 'No seed data task exists yet. Future tasks must use synthetic development data only.'
-
-run:
-	@printf '%s\n' 'No local application stack exists yet. Future Docker Compose or dev-server commands should run here.'
