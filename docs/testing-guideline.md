@@ -45,10 +45,16 @@ exports, and audit events where relevant.
 
 ## Command Conventions
 
-No test command is checked in yet. When tooling is added, expose stable commands
-through `Makefile`, for example:
+Expose stable commands through `Makefile`:
 
-- `make test`: run the full test suite.
+- `make test`: run the default offline suite without AWS credentials, network
+  access, or an active AWS SSO session.
 - `make test-backend`: run Python service tests.
 - `make test-frontend`: run frontend tests.
-- `make test-contracts`: run cross-service contract tests.
+- `make test-local-db`: run local PostgreSQL, app schema, and PGVector smoke
+  checks against an already-running Compose database.
+- `make test-contracts`: run cross-service contract tests when introduced.
+
+Cognito, S3, SQS, and Bedrock tests are intentionally not part of the default
+suite in the local runtime checkpoint. Future live AWS tests must be isolated
+behind an explicit target and use synthetic development data only.

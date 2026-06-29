@@ -32,6 +32,7 @@ test: test-backend test-frontend
 test-backend:
 	$(PYTHON) -m unittest discover -s services/api-gateway/tests -p 'test_*.py'
 	$(PYTHON) -m unittest discover -s workers/local-runtime-worker/tests -p 'test_*.py'
+	$(PYTHON) -m unittest discover -s tests -p 'test_*.py'
 
 test-frontend:
 	@if test -d frontend; then \
