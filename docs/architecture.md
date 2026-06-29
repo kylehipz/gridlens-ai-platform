@@ -249,7 +249,11 @@ This flow should make explicit where Cognito identity, GridLens membership,
 tenant context, role authorization, and audit-relevant side effects interact.
 
 ### Dataset Ingestion
+#### High-level diagram
+<img width="801" height="479" alt="image" src="https://github.com/user-attachments/assets/9db0e635-35b2-4f94-b12f-b7c625374130" />
 
+#### Sequence diagram
+<img width="3064" height="2542" alt="image" src="https://github.com/user-attachments/assets/c9318f8c-d197-4273-ba3e-d31b4267f786" />
 Shows the end-to-end path from file upload through dataset registration,
 tenant-scoped object storage, ingestion job creation, SQS enqueueing, worker
 processing, validation, quality reporting, normalized data storage, and status
