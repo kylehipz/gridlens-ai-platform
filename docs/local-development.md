@@ -218,6 +218,26 @@ make dev
 dependencies from `pyproject.toml`. Makefile Python targets use
 `.venv/bin/python` by default.
 
+## Frontend App
+
+The Vite React TypeScript app lives under `frontend/`.
+
+Run the browser app directly on the host:
+
+```sh
+make run-frontend
+```
+
+Run the frontend unit and component tests:
+
+```sh
+make test-frontend
+```
+
+The development sign-in stores only local scaffold session state in the browser.
+It is not a security boundary; backend services remain responsible for
+authentication, authorization, and tenant isolation.
+
 Shared library checks are also available directly:
 
 ```sh
