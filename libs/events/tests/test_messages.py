@@ -1,5 +1,6 @@
 import json
 import unittest
+from typing import cast
 
 from gridlens_contracts.tenant_context import ActorContext
 from gridlens_events import build_event, event_source_id, idempotency_key, to_queue_message
@@ -18,7 +19,7 @@ class EventTests(unittest.TestCase):
         )
         self.assertEqual("tenant_a:generic.workflow.requested:dataset_1", event.idempotency_key)
         message = to_queue_message(event)
-        body = json.loads(message["MessageBody"])
+        body = json.loads(cast(str, message["MessageBody"]))
         for field in ("tenant_id", "correlation_id", "actor", "retry", "idempotency_key"):
             self.assertIn(field, body)
 

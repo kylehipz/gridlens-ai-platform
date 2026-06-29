@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "gridlens-ai-platform"
 version = "0.0.0"
 description = "GridLens AI Platform foundation workspace"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.115,<0.116",
     "httpx>=0.27,<1",
@@ -15,6 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "pyright>=1.1.400,<2",
     "pytest>=8.2,<9",
     "ruff>=0.8,<1",
 ]
@@ -65,7 +66,7 @@ pythonpath = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py314"
 extend-exclude = [
     ".venv",
     "gridlens_ai_platform.egg-info",
@@ -83,3 +84,39 @@ select = [
 ignore = [
     "E501",
 ]
+
+[tool.pyright]
+include = [
+    "services",
+    "libs",
+    "tests",
+]
+exclude = [
+    "**/__pycache__",
+    ".venv",
+    "gridlens_ai_platform.egg-info",
+]
+pythonVersion = "3.14"
+pythonPlatform = "Linux"
+typeCheckingMode = "standard"
+venvPath = "."
+venv = ".venv"
+extraPaths = [
+    "services/identity-tenant-service/src",
+    "services/data-operations-service/src",
+    "services/assistant-service/src",
+    "services/program-evaluation-service/src",
+    "services/insights-reporting-service/src",
+    "services/governance-service/src",
+    "services/alerts-anomalies-service/src",
+    "libs/contracts/src",
+    "libs/config/src",
+    "libs/auth/src",
+    "libs/db/src",
+    "libs/events/src",
+    "libs/storage/src",
+    "libs/ai/src",
+    "libs/observability/src",
+    "libs/testing/src",
+]
+reportMissingTypeStubs = false

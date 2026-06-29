@@ -2,13 +2,14 @@ PYTHON ?= .venv/bin/python
 SYSTEM_PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
 RUFF ?= $(PYTHON) -m ruff
+PYRIGHT ?= $(PYTHON) -m pyright
 COMPOSE ?= docker compose
 COMPOSE_BASE := -f docker-compose.yml
 COMPOSE_DEV := -f docker-compose.yml -f docker-compose.dev.yml
 PROJECT_NAME ?= gridlens-local
 BUILD ?=
 
-.PHONY: setup dev dev-gateway down reset-local-state test test-backend test-frontend test-contracts test-libs test-local-db lint format migrate seed run run-identity-tenant
+.PHONY: setup dev dev-gateway down reset-local-state test test-backend test-frontend test-contracts test-libs test-local-db lint typecheck format migrate seed run run-identity-tenant
 
 setup:
 	@printf '%s\n' 'GridLens local setup'
@@ -79,6 +80,9 @@ test-local-db:
 
 lint:
 	$(RUFF) check services libs tests
+
+typecheck:
+	$(PYRIGHT)
 
 format:
 	@printf '%s\n' 'No formatter is configured yet. Future Python and frontend formatters should run here.'

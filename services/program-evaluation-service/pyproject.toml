@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "gridlens-program-evaluation-service"
 version = "0.0.0"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.115,<0.116",
     "httpx>=0.27,<1",

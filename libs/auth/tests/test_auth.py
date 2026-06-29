@@ -28,6 +28,8 @@ class AuthTests(unittest.TestCase):
             "dev:user_a:tenant_a:Analyst", request_id="req_1", correlation_id="corr_1"
         )
         self.assertEqual("user_a", principal.subject)
+        self.assertIsNotNone(principal.tenant_context)
+        assert principal.tenant_context is not None
         self.assertIn(Role.ANALYST, principal.tenant_context.roles)
         require_role(principal.tenant_context, {Role.ANALYST})
 
@@ -61,6 +63,8 @@ class AuthTests(unittest.TestCase):
             issuer="https://issuer.example.test", audience="gridlens", key_provider=provider
         ).validate("jwt", request_id="req", correlation_id="corr")
         self.assertEqual([("jwt", "https://issuer.example.test", "gridlens")], provider.calls)
+        self.assertIsNotNone(principal.tenant_context)
+        assert principal.tenant_context is not None
         self.assertIn(PlatformRole.PLATFORM_OPERATOR, principal.tenant_context.actor.platform_roles)
 
 
