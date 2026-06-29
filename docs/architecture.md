@@ -249,18 +249,44 @@ This flow should make explicit where Cognito identity, GridLens membership,
 tenant context, role authorization, and audit-relevant side effects interact.
 
 ### Dataset Ingestion
+
+Dataset ingestion lets a tenant member upload a dataset directly to tenant-scoped
+S3 object storage while the DataOps service records dataset metadata and an
+ingestion job in Aurora. S3 object creation events enqueue asynchronous work for
+the DataOps worker, which reads the raw object, validates and transforms the
+file, writes normalized records, and updates user-visible job status.
+
 #### High-level diagram
 <img width="801" height="479" alt="image" src="https://github.com/user-attachments/assets/9db0e635-35b2-4f94-b12f-b7c625374130" />
 
 #### Sequence diagram
 <img width="3064" height="2542" alt="image" src="https://github.com/user-attachments/assets/c9318f8c-d197-4273-ba3e-d31b4267f786" />
-Shows the end-to-end path from file upload through dataset registration,
-tenant-scoped object storage, ingestion job creation, SQS enqueueing, worker
-processing, validation, quality reporting, normalized data storage, and status
-updates visible to users.
 
-This flow should include invalid-file handling, blocking validation failures,
-retryable system failures, and lineage from raw file to dataset.
+The diagrams focus on the primary happy path. The following requirements should
+be implemented and tested as part of the ingestion workflow without adding
+additional clutter to the diagrams:
+
+* Upload intents create the dataset record and pending ingestion job before
+  returning a pre-signed S3 URL.
+* Pre-signed URLs are scoped to tenant-safe object keys, expected content type,
+  maximum upload size, checksum requirements, encryption settings, and short
+  expiry windows.
+* S3 and SQS delivery are treated as at-least-once. Workers should claim jobs
+  with idempotent state transitions keyed by tenant ID, dataset ID, upload ID,
+  object key, and object version or ETag.
+* Pending uploads should expire if no matching object is uploaded within the
+  allowed window.
+* Workers validate file size, checksum, schema, tenant ownership, malformed
+  rows, timestamp and unit conventions, and duplicate data before writing
+  processed records.
+* Job status should be tracked through states such as `pending_upload`,
+  `processing`, `completed`, `expired`, `failed_validation`, and
+  `failed_processing`.
+* Worker failures should preserve enough failure reason, attempt, correlation,
+  and lineage metadata to trace each raw file to the resulting dataset records
+  or terminal failure state.
+* Dataset DLQ messages should be monitored, alarmed, inspected, and replayed
+  through an explicit remediation process after the underlying issue is fixed.
 
 ### Assistant Ingestion
 
