@@ -1,7 +1,7 @@
 import json
 import os
 import signal
-import time
+from threading import Event
 
 SERVICE_NAME = "data-operations-service"
 WORKER_NAME = "data-operations-worker"
@@ -13,15 +13,18 @@ def readiness() -> dict[str, str]:
 
 def main() -> None:
     interval = float(os.getenv("WORKER_HEARTBEAT_SECONDS", "30"))
-    running = True
+    stop_event = Event()
 
     def stop(_signum: int, _frame: object) -> None:
-        nonlocal running
-        running = False
+        stop_event.set()
 
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
 
-    while running:
+    while not stop_event.is_set():
         print(json.dumps(readiness(), sort_keys=True), flush=True)
-        time.sleep(interval)
+        stop_event.wait(interval)
+
+
+if __name__ == "__main__":
+    main()

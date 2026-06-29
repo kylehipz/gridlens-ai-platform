@@ -28,7 +28,7 @@ setup:
 	@printf '%s\n' 'Run make test for offline checks or make dev for the local runtime.'
 
 dev:
-	$(COMPOSE) $(COMPOSE_DEV) up $(BUILD)
+	$(COMPOSE) $(COMPOSE_DEV) up $(BUILD) -d
 
 dev-gateway:
 	$(COMPOSE) $(COMPOSE_DEV) up --build identity-tenant-service kong

@@ -1,4 +1,4 @@
-from gridlens_insights_reporting_service.workers import readiness
+from gridlens_insights_reporting_service.workers.main import readiness
 
 
 def test_worker_readiness_is_deterministic() -> None:
