@@ -176,6 +176,18 @@ make test
 make dev
 ```
 
+Shared library checks are also available directly:
+
+```sh
+make test-contracts
+make test-libs
+```
+
+These targets use fake adapters for S3-compatible storage, AI providers,
+JWKS/Cognito validation, event queue messages, and tenant-aware repositories.
+They must not require Docker, AWS credentials, active SSO, network access, or a
+live PostgreSQL instance.
+
 Copy `.env.example` to `.env` only when you need to override the public-safe
 defaults. The Compose files already provide non-secret defaults for the
 scaffold runtime.

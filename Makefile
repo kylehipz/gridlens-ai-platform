@@ -3,8 +3,9 @@ COMPOSE ?= docker compose
 COMPOSE_BASE := -f docker-compose.yml
 COMPOSE_DEV := -f docker-compose.yml -f docker-compose.dev.yml
 PROJECT_NAME ?= gridlens-local
+LIB_PYTHONPATH := libs/contracts/src:libs/config/src:libs/auth/src:libs/db/src:libs/events/src:libs/storage/src:libs/ai/src:libs/observability/src:libs/testing/src
 
-.PHONY: setup dev down reset-local-state test test-backend test-frontend test-local-db lint format migrate seed run
+.PHONY: setup dev down reset-local-state test test-backend test-frontend test-contracts test-libs test-local-db lint format migrate seed run
 
 setup:
 	@printf '%s\n' 'GridLens local setup'
@@ -33,6 +34,29 @@ test-backend:
 	$(PYTHON) -m unittest discover -s services/api-gateway/tests -p 'test_*.py'
 	$(PYTHON) -m unittest discover -s workers/local-runtime-worker/tests -p 'test_*.py'
 	$(PYTHON) -m unittest discover -s tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/contracts/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/config/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/auth/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/db/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/events/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/storage/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/ai/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/observability/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/testing/tests -p 'test_*.py'
+
+test-contracts:
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/contracts/tests -p 'test_*.py'
+
+test-libs:
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/contracts/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/config/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/auth/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/db/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/events/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/storage/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/ai/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/observability/tests -p 'test_*.py'
+	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/testing/tests -p 'test_*.py'
 
 test-frontend:
 	@if test -d frontend; then \

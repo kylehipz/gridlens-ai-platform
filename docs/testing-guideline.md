@@ -51,10 +51,14 @@ Expose stable commands through `Makefile`:
   access, or an active AWS SSO session.
 - `make test-backend`: run Python service tests.
 - `make test-frontend`: run frontend tests.
+- `make test-contracts`: run shared role, status, envelope, pagination, tenant
+  context, audit, event, and drift tests.
+- `make test-libs`: run all shared library unit tests, including fake storage
+  and AI adapters, auth/config/db/events/observability helpers, and
+  import-boundary guards.
 - `make test-local-db`: run local PostgreSQL, app schema, and PGVector smoke
   checks against an already-running Compose database.
-- `make test-contracts`: run cross-service contract tests when introduced.
 
 Cognito, S3, SQS, and Bedrock tests are intentionally not part of the default
-suite in the local runtime checkpoint. Future live AWS tests must be isolated
-behind an explicit target and use synthetic development data only.
+suite. Live AWS tests must be isolated behind an explicit target and use
+synthetic development data only.
