@@ -34,7 +34,7 @@ class LocalRuntimeConfigTests(TestCase):
 
         expected_bindings = [
             "127.0.0.1:${POSTGRES_PORT:-5432}:5432",
-            "127.0.0.1:${API_PORT:-8000}:8000",
+            "127.0.0.1:${API_HOST_PORT:-8000}:8000",
             "127.0.0.1:${API_DEBUG_PORT:-5678}:5678",
             "127.0.0.1:${WORKER_DEBUG_PORT:-5679}:5679",
         ]
@@ -43,6 +43,16 @@ class LocalRuntimeConfigTests(TestCase):
         for binding in expected_bindings:
             with self.subTest(binding=binding):
                 self.assertIn(binding, merged_compose)
+
+    def test_api_host_port_is_separate_from_container_listener(self) -> None:
+        compose = (ROOT / "docker-compose.yml").read_text()
+        env_example = (ROOT / ".env.example").read_text()
+
+        self.assertIn("API_PORT: 8000", compose)
+        self.assertIn("127.0.0.1:${API_HOST_PORT:-8000}:8000", compose)
+        self.assertIn("API_HOST_PORT=8000", env_example)
+        self.assertNotIn("${API_PORT:-8000}:8000", compose)
+        self.assertNotIn("API_PORT=8000", env_example)
 
     def test_runtime_files_do_not_include_static_aws_credentials(self) -> None:
         secret_pattern = re.compile(

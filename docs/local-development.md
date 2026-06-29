@@ -192,6 +192,10 @@ The API health endpoint is available at:
 curl http://localhost:8000/health
 ```
 
+Set `API_HOST_PORT` in `.env` to publish the API on a different host port.
+The API container still listens on port `8000` internally so Compose
+healthchecks and service routing remain stable.
+
 Stop the stack without deleting local database state:
 
 ```sh
@@ -272,10 +276,12 @@ For example:
 | Reporting service | 8050 | 5684 |
 | Worker processes | n/a | Service-specific |
 
-The first local runtime publishes the scaffolded API on port `8000`, the API
-debugger on port `5678`, and the worker debugger on port `5679`. Exact ports for
-later services may change as implementation begins, but every service should
-have a documented debugger port and avoid collisions with other local services.
+The first local runtime publishes the scaffolded API on host port `8000` by
+default, the API debugger on port `5678`, and the worker debugger on port
+`5679`. Use `API_HOST_PORT` to change the API host port without changing the
+container listener. Exact ports for later services may change as implementation
+begins, but every service should have a documented debugger port and avoid
+collisions with other local services.
 
 ## Environment Variables
 
