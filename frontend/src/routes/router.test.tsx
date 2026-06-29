@@ -1,9 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { RouterProvider } from "react-router-dom";
 import { beforeEach, describe, expect, it } from "vitest";
-import { SessionProvider } from "../features/auth/session";
-import { createAppRouter } from "./router";
+import { renderRoute } from "../test/render";
 
 describe("app router", () => {
   beforeEach(() => {
@@ -12,18 +10,15 @@ describe("app router", () => {
   });
 
   it("redirects unauthenticated protected routes to sign in", async () => {
-    window.history.pushState({}, "", "/dashboard");
-
-    renderWithSession();
+    renderRoute("/dashboard");
 
     expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
   });
 
   it("renders the workspace picker after development sign in", async () => {
     const user = userEvent.setup();
-    window.history.pushState({}, "", "/signin");
 
-    renderWithSession();
+    renderRoute("/signin");
 
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
@@ -32,9 +27,8 @@ describe("app router", () => {
 
   it("renders the dashboard shell after selecting a workspace", async () => {
     const user = userEvent.setup();
-    window.history.pushState({}, "", "/signin");
 
-    renderWithSession();
+    renderRoute("/signin");
 
     await user.click(screen.getByRole("button", { name: /continue/i }));
     await user.click(await screen.findByRole("button", { name: /northwind utilities/i }));
@@ -47,9 +41,8 @@ describe("app router", () => {
     const user = userEvent.setup();
     window.localStorage.setItem("gridlens.devSession", "signed-in");
     window.localStorage.setItem("gridlens.devWorkspace", "northwind");
-    window.history.pushState({}, "", "/dashboard");
 
-    renderWithSession();
+    renderRoute("/dashboard");
 
     await user.click(await screen.findByRole("button", { name: "Open navigation" }));
     await user.click(screen.getByRole("link", { name: /Assistant/ }));
@@ -58,11 +51,3 @@ describe("app router", () => {
     expect(screen.getByRole("heading", { name: "Evidence-grounded assistant" })).toBeInTheDocument();
   });
 });
-
-function renderWithSession() {
-  return render(
-    <SessionProvider>
-      <RouterProvider router={createAppRouter()} />
-    </SessionProvider>
-  );
-}
