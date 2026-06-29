@@ -123,6 +123,27 @@ Bedrock is a first-class dependency for AI workloads:
 AI requests must be tenant-scoped, grounded in approved evidence, observable for
 usage and latency, and designed to avoid cross-tenant retrieval or citation.
 
+## Local Development Architecture
+
+Local development should use Docker Compose for the application services,
+background workers, PostgreSQL, and developer support services. Managed AWS
+dependencies should be exercised directly against development AWS resources for
+Cognito, S3, SQS, and Bedrock so authentication, object storage, queueing, and
+AI behavior remain close to deployed behavior.
+
+Developer AWS access should use AWS SSO profiles. Containers should mount the
+host `$HOME/.aws` directory read-only, receive `AWS_PROFILE`, `AWS_REGION`, and
+`AWS_SDK_LOAD_CONFIG=1`, and rely on expiring SSO credentials instead of static
+access keys.
+
+Each deployable service should provide a Dockerfile `dev` stage that installs
+development dependencies and debugger tooling. Development-only runtime behavior
+such as hot reload, bind mounts, and published debugger ports should be defined
+in `docker-compose.dev.yml` as an overlay on top of the baseline
+`docker-compose.yml`.
+
+See `docs/local-development.md` for the local setup conventions.
+
 ## Service Ownership
 
 Each service owns a bounded product area. A service may expose HTTP APIs and own

@@ -2513,7 +2513,7 @@ docs/
   synthetic-data-guide.md
   demo-script.md
   tradeoffs.md
-  local-setup.md
+  local-development.md
   deployment-notes.md
 ```
 

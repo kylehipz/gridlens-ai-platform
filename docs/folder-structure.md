@@ -40,6 +40,8 @@ Expected contents:
   behavior.
 - `architecture.md`: technical architecture, service boundaries, request flows,
   deployment model, and major tradeoffs.
+- `local-development.md`: local Docker Compose, AWS SSO, live AWS dependency,
+  debugger, and development image conventions.
 - `data-model.md`: core entities, relationships, tenant-scoping rules, and data
   lineage model.
 - `coding-standards.md`: project conventions for Python, TypeScript, testing,
@@ -240,7 +242,6 @@ Recommended structure:
 infra/
 ├── terraform/ or cdk/
 ├── docker/
-├── localstack/
 ├── environments/
 │   ├── local/
 │   ├── staging/
@@ -253,8 +254,9 @@ Infrastructure responsibilities:
 - Cloud networking, compute, databases, object storage, queues, secrets,
   authentication, observability, and IAM.
 - Environment-specific configuration and deployment parameters.
-- Local cloud emulation using Docker Compose, LocalStack, MinIO, or equivalent
-  tools.
+- Local development support that uses Docker Compose for services, workers, and
+  PostgreSQL, with AWS SSO-backed access to development Cognito, S3, SQS, and
+  Bedrock resources.
 - Least-privilege IAM policies and tenant-safe resource boundaries.
 
 Infrastructure code should not contain application secrets. Use documented
@@ -335,6 +337,8 @@ Expected root-level files:
 - `Makefile`: stable developer commands such as setup, test, lint, format,
   migrate, seed, and run.
 - `docker-compose.yml`: local development dependencies and service orchestration.
+- `docker-compose.dev.yml`: development overlay for hot reload, debug ports,
+  bind mounts, and Dockerfile `dev` stages.
 - `.env.example`: documented local environment variables without secrets.
 - `.gitignore`: ignored local artifacts, caches, build outputs, and secret
   files.
