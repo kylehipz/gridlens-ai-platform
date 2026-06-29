@@ -81,3 +81,8 @@ import paths. Add new Python test roots there instead of appending more
 Ruff is the backend Python linter. `make lint` runs `ruff check` using the
 configuration in `pyproject.toml`, then runs repository hygiene checks for merge
 conflict markers, accidental AWS credentials, and whitespace.
+
+Frontend tests use Vitest and React Testing Library under `frontend/`. Add
+route, component, API-client, and accessibility-oriented interaction tests close
+to the relevant frontend module, using `frontend/src/test/render.tsx` for app
+provider setup.

@@ -49,13 +49,14 @@ mock values only.
 | `make setup` | Create `.venv`, install development dependencies from `pyproject.toml`, verify baseline files, and print setup guidance. |
 | `make dev` | Start PostgreSQL, Kong, all scaffolded FastAPI services, and implemented service workers with the development Compose overlay. |
 | `make dev-gateway` | Start only Kong and its current upstream health service. |
+| `make run-frontend` | Start the Vite frontend development server. |
 | `make down` | Stop the local Compose stack while preserving named volumes. |
 | `make reset-local-state` | Stop the stack and remove named local volumes so database init scripts rerun on next start. |
 | `make test` | Run the default offline repository test targets. |
 | `make test-backend` | Run all configured Python tests with pytest. |
 | `make test-contracts` | Run shared contract tests with pytest. |
 | `make test-libs` | Run all shared library tests with pytest. |
-| `make test-frontend` | Run frontend tests when `frontend/` exists; placeholder today. |
+| `make test-frontend` | Run the frontend Vitest/React Testing Library suite. |
 | `make test-local-db` | Smoke-test the running local PostgreSQL database, app schema, and PGVector extension. |
 | `make bootstrap-live-db` | Initialize a live PostgreSQL database with the app role, app schema, and PGVector extension. |
 | `make test-live-db` | Smoke-test a live PostgreSQL database reachable through `POSTGRES_HOST` and `POSTGRES_PORT`, or through `POSTGRES_CONTAINER_ID`. |
@@ -87,6 +88,14 @@ mock values only.
   documentation expectations.
 - [Coding standards](docs/coding-standards.md): backend, frontend, testing,
   security, observability, and AI/RAG implementation conventions.
+
+## Frontend
+
+The browser app lives under `frontend/`. It provides a protected route shell for
+sign in, workspace selection, dashboard, assistant, datasets, evaluations,
+anomalies, reports, audit, usage, and settings. The current development sign-in
+is a local scaffold for frontend routing only; real tenant isolation must be
+enforced by backend services.
 
 ## Contributor Notes
 
