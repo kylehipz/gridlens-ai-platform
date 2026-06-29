@@ -1,6 +1,6 @@
-from http import HTTPStatus
 import json
 import sys
+from http import HTTPStatus
 from pathlib import Path
 from unittest import TestCase
 

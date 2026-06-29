@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import unittest
+from dataclasses import dataclass
 
 from gridlens_db import TenantScopedRepository
 from gridlens_db.tenant_repository import RlsSessionContext

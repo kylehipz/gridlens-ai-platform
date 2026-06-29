@@ -1,6 +1,6 @@
 import ast
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 from gridlens_testing import make_tenant, make_user
 

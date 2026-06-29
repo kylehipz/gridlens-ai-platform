@@ -2,7 +2,7 @@ import re
 from contextvars import ContextVar
 from typing import Any
 
-_context: ContextVar[dict[str, Any]] = ContextVar("gridlens_log_context", default={})
+_context: ContextVar[dict[str, Any] | None] = ContextVar("gridlens_log_context", default=None)
 
 
 def redact_value(value: Any) -> Any:
@@ -27,15 +27,19 @@ def _redact_field(key: str, value: Any) -> Any:
     return redact_value(value)
 
 
+def _current_context() -> dict[str, Any]:
+    return dict(_context.get() or {})
+
+
 def bind_context(**fields: Any) -> None:
     safe = {key: _redact_field(key, value) for key, value in fields.items()}
-    current = dict(_context.get())
+    current = _current_context()
     current.update(safe)
     _context.set(current)
 
 
 def structured_record(message: str, **fields: Any) -> dict[str, Any]:
-    record = dict(_context.get())
+    record = _current_context()
     record.update({key: _redact_field(key, value) for key, value in fields.items()})
     record["message"] = message
     return record

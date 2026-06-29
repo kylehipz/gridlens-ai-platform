@@ -1,6 +1,7 @@
 PYTHON ?= .venv/bin/python
 SYSTEM_PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
+RUFF ?= $(PYTHON) -m ruff
 COMPOSE ?= docker compose
 COMPOSE_BASE := -f docker-compose.yml
 COMPOSE_DEV := -f docker-compose.yml -f docker-compose.dev.yml
@@ -70,6 +71,7 @@ test-local-db:
 		-c "drop table app.local_smoke_check;"
 
 lint:
+	$(RUFF) check services workers libs tests
 	@printf '%s\n' 'Checking repository hygiene...'
 	@if git grep -n -I -E '^(<<<<<<<|=======|>>>>>>>)' -- .; then \
 		printf '%s\n' 'Unresolved merge conflict marker found.'; \

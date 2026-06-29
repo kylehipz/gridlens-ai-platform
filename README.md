@@ -52,7 +52,7 @@ connectivity, the `app` schema, and the `vector` extension.
 | `make test-libs` | Run all shared library tests with pytest. |
 | `make test-frontend` | Run frontend tests when `frontend/` exists; placeholder today. |
 | `make test-local-db` | Smoke-test the running local PostgreSQL database, app schema, and PGVector extension. |
-| `make lint` | Check repository hygiene such as conflict markers and whitespace, including committed PR diff whitespace in CI. |
+| `make lint` | Run Ruff for backend Python linting plus repository hygiene checks. |
 | `make format` | Placeholder for future formatters. |
 | `make migrate` | Placeholder for future database migrations. |
 | `make seed` | Placeholder for future synthetic development seed data. |

@@ -67,3 +67,7 @@ synthetic development data only.
 `pyproject.toml` is the source of truth for pytest discovery paths and source
 import paths. Add new Python test roots there instead of appending more
 `unittest discover` commands to the Makefile.
+
+Ruff is the backend Python linter. `make lint` runs `ruff check` using the
+configuration in `pyproject.toml`, then runs repository hygiene checks for merge
+conflict markers, accidental AWS credentials, and whitespace.

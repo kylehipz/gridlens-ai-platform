@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import unittest
+from dataclasses import dataclass
 
 from gridlens_config import SettingsError, SettingsModel, field
 

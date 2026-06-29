@@ -7,7 +7,7 @@ from gridlens_contracts.errors import ErrorEnvelope
 from gridlens_contracts.events import EventEnvelope
 from gridlens_contracts.pagination import ListResponse, Pagination
 from gridlens_contracts.roles import PLATFORM_ROLES, TENANT_ROLES, Role
-from gridlens_contracts.statuses import EvaluationRunStatus, IngestionJobStatus, STATUS_FAMILIES
+from gridlens_contracts.statuses import STATUS_FAMILIES, EvaluationRunStatus, IngestionJobStatus
 from gridlens_contracts.tenant_context import ActorContext, TenantContext
 
 ROOT = Path(__file__).resolve().parents[3]
