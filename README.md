@@ -42,12 +42,14 @@ connectivity, the `app` schema, and the `vector` extension.
 
 | Command | Purpose |
 |---|---|
-| `make setup` | Verify baseline files and print setup guidance. |
+| `make setup` | Create `.venv`, install development dependencies from `pyproject.toml`, verify baseline files, and print setup guidance. |
 | `make dev` | Start PostgreSQL, the scaffold API, and the scaffold worker with the development Compose overlay. |
 | `make down` | Stop the local Compose stack while preserving named volumes. |
 | `make reset-local-state` | Stop the stack and remove named local volumes so database init scripts rerun on next start. |
 | `make test` | Run the default offline repository test targets. |
-| `make test-backend` | Run Python scaffold service and worker tests. |
+| `make test-backend` | Run all configured Python tests with pytest. |
+| `make test-contracts` | Run shared contract tests with pytest. |
+| `make test-libs` | Run all shared library tests with pytest. |
 | `make test-frontend` | Run frontend tests when `frontend/` exists; placeholder today. |
 | `make test-local-db` | Smoke-test the running local PostgreSQL database, app schema, and PGVector extension. |
 | `make lint` | Check repository hygiene such as conflict markers and whitespace, including committed PR diff whitespace in CI. |

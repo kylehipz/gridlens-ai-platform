@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gridlens-ai-platform"
+version = "0.0.0"
+description = "GridLens AI Platform foundation workspace"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2,<9",
+]
+
+[tool.setuptools]
+packages = []
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+python_files = ["test_*.py"]
+testpaths = [
+    "services/api-gateway/tests",
+    "workers/local-runtime-worker/tests",
+    "tests",
+    "libs/contracts/tests",
+    "libs/config/tests",
+    "libs/auth/tests",
+    "libs/db/tests",
+    "libs/events/tests",
+    "libs/storage/tests",
+    "libs/ai/tests",
+    "libs/observability/tests",
+    "libs/testing/tests",
+]
+pythonpath = [
+    "services/api-gateway/src",
+    "workers/local-runtime-worker/src",
+    "libs/contracts/src",
+    "libs/config/src",
+    "libs/auth/src",
+    "libs/db/src",
+    "libs/events/src",
+    "libs/storage/src",
+    "libs/ai/src",
+    "libs/observability/src",
+    "libs/testing/src",
+]

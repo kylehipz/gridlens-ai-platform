@@ -49,7 +49,8 @@ Expose stable commands through `Makefile`:
 
 - `make test`: run the default offline suite without AWS credentials, network
   access, or an active AWS SSO session.
-- `make test-backend`: run Python service tests.
+- `make test-backend`: run all configured Python tests with pytest from the
+  repo-local `.venv`.
 - `make test-frontend`: run frontend tests.
 - `make test-contracts`: run shared role, status, envelope, pagination, tenant
   context, audit, event, and drift tests.
@@ -62,3 +63,7 @@ Expose stable commands through `Makefile`:
 Cognito, S3, SQS, and Bedrock tests are intentionally not part of the default
 suite. Live AWS tests must be isolated behind an explicit target and use
 synthetic development data only.
+
+`pyproject.toml` is the source of truth for pytest discovery paths and source
+import paths. Add new Python test roots there instead of appending more
+`unittest discover` commands to the Makefile.

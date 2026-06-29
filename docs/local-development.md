@@ -176,6 +176,10 @@ make test
 make dev
 ```
 
+`make setup` creates the repo-local `.venv` and installs development
+dependencies from `pyproject.toml`. Makefile Python targets use
+`.venv/bin/python` by default.
+
 Shared library checks are also available directly:
 
 ```sh

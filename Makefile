@@ -1,9 +1,10 @@
-PYTHON ?= python3
+PYTHON ?= .venv/bin/python
+SYSTEM_PYTHON ?= python3
+PYTEST ?= $(PYTHON) -m pytest
 COMPOSE ?= docker compose
 COMPOSE_BASE := -f docker-compose.yml
 COMPOSE_DEV := -f docker-compose.yml -f docker-compose.dev.yml
 PROJECT_NAME ?= gridlens-local
-LIB_PYTHONPATH := libs/contracts/src:libs/config/src:libs/auth/src:libs/db/src:libs/events/src:libs/storage/src:libs/ai/src:libs/observability/src:libs/testing/src
 
 .PHONY: setup dev down reset-local-state test test-backend test-frontend test-contracts test-libs test-local-db lint format migrate seed run
 
@@ -13,6 +14,13 @@ setup:
 	@test -f .env.example
 	@test -f docker-compose.yml
 	@test -f docker-compose.dev.yml
+	@test -f pyproject.toml
+	@if ! test -x .venv/bin/python; then \
+		printf '%s\n' 'Creating .venv...'; \
+		$(SYSTEM_PYTHON) -m venv .venv; \
+	fi
+	$(PYTHON) -m pip install --upgrade pip
+	$(PYTHON) -m pip install -e '.[dev]'
 	@printf '%s\n' 'Optional: copy .env.example to .env and adjust development-only placeholders.'
 	@printf '%s\n' 'Run make test for offline checks or make dev for the local runtime.'
 
@@ -31,32 +39,13 @@ test: test-backend test-frontend
 	@printf '%s\n' 'Default offline tests completed.'
 
 test-backend:
-	$(PYTHON) -m unittest discover -s services/api-gateway/tests -p 'test_*.py'
-	$(PYTHON) -m unittest discover -s workers/local-runtime-worker/tests -p 'test_*.py'
-	$(PYTHON) -m unittest discover -s tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/contracts/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/config/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/auth/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/db/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/events/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/storage/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/ai/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/observability/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/testing/tests -p 'test_*.py'
+	$(PYTEST)
 
 test-contracts:
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/contracts/tests -p 'test_*.py'
+	$(PYTEST) libs/contracts/tests
 
 test-libs:
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/contracts/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/config/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/auth/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/db/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/events/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/storage/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/ai/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/observability/tests -p 'test_*.py'
-	PYTHONPATH="$(LIB_PYTHONPATH)" $(PYTHON) -m unittest discover -s libs/testing/tests -p 'test_*.py'
+	$(PYTEST) libs
 
 test-frontend:
 	@if test -d frontend; then \

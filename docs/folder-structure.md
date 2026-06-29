@@ -189,9 +189,8 @@ Current implementation notes:
 
 - Each Python library uses `src/gridlens_<capability>/` plus a local `tests/`
   directory.
-- The repo-level `Makefile` exposes the source paths through `LIB_PYTHONPATH`
-  for offline `unittest` discovery until a formal Python workspace/package
-  manager is introduced.
+- Root `pyproject.toml` configures pytest discovery and source import paths for
+  services, workers, shared libraries, and repo-level tests.
 - Tenant context contracts currently live in `libs/contracts` so auth, events,
   and workers share one stable request-context shape.
 - AWS, Cognito, Bedrock, and PostgreSQL-specific behavior must stay behind
