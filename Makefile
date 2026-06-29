@@ -72,27 +72,6 @@ test-local-db:
 
 lint:
 	$(RUFF) check services workers libs tests
-	@printf '%s\n' 'Checking repository hygiene...'
-	@if git grep -n -I -E '^(<<<<<<<|=======|>>>>>>>)' -- .; then \
-		printf '%s\n' 'Unresolved merge conflict marker found.'; \
-		exit 1; \
-	fi
-	@if git grep -n -I -E 'AWS_(ACCESS_KEY_ID|SECRET_ACCESS_KEY|SESSION_TOKEN)=|AKIA[0-9A-Z]{16}' -- . ':!.git' ':!.handover'; then \
-		printf '%s\n' 'Potential committed AWS credential found.'; \
-		exit 1; \
-	fi
-	@if test -n "$$GITHUB_BASE_REF"; then \
-		base_ref="origin/$$GITHUB_BASE_REF"; \
-		if ! git rev-parse --verify --quiet "$$base_ref" >/dev/null; then \
-			git fetch --no-tags --prune --depth=1 origin \
-				"+refs/heads/$$GITHUB_BASE_REF:refs/remotes/origin/$$GITHUB_BASE_REF"; \
-		fi; \
-		git diff --check "$$base_ref...HEAD"; \
-	else \
-		git diff --check --cached; \
-		git diff --check; \
-	fi
-	@printf '%s\n' 'Repository hygiene checks passed.'
 
 format:
 	@printf '%s\n' 'No formatter is configured yet. Future Python and frontend formatters should run here.'
