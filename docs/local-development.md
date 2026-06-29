@@ -12,6 +12,7 @@ are difficult to emulate accurately.
 
 The local stack should run:
 
+- Kong as the browser-facing API gateway for `/api/v1` traffic.
 - API services.
 - Background workers.
 - PostgreSQL.
@@ -135,6 +136,7 @@ FROM base AS runtime
 The root `docker-compose.yml` should define the baseline local topology:
 
 - Services.
+- Kong in DB-less mode with a tracked declarative configuration.
 - Workers.
 - PostgreSQL.
 - Shared networks.
@@ -165,6 +167,42 @@ Prefer the Makefile target for day-to-day work. `make down` stops containers and
 preserves named volumes. `make reset-local-state` is the explicit destructive
 reset path and removes local named volumes so PostgreSQL init scripts rerun on
 the next startup.
+
+## Kong Gateway
+
+Kong owns the local browser-facing `/api/v1` ingress path. It runs in DB-less
+mode from the tracked declarative file at `infra/local/kong/kong.yml`; no Kong
+database container is required.
+
+The local Compose service sets:
+
+- `KONG_DATABASE=off`
+- `KONG_DECLARATIVE_CONFIG=/kong/declarative/kong.yml`
+
+Kong publishes the proxy on `127.0.0.1:${API_HOST_PORT:-8000}`. The admin API
+is configured for loopback inside the container and is not published as a host
+port by the Compose file. Gateway auth plugins, tenant enforcement, request
+transformation, and rate limiting are deferred until policy workstreams add
+them explicitly.
+
+The active scaffold route is:
+
+```text
+GET /api/v1/health -> api:8000/health
+```
+
+Use this target to run only the gateway path and its upstream API service:
+
+```sh
+make dev-gateway
+curl http://127.0.0.1:${API_HOST_PORT:-8000}/api/v1/health
+```
+
+The expected response body is public-safe scaffold JSON:
+
+```json
+{"status":"ok","service":"api-gateway"}
+```
 
 ## First Run
 
@@ -199,18 +237,27 @@ scaffold runtime.
 `make dev` starts:
 
 - PostgreSQL 16 with PGVector.
-- The scaffold API service.
+- Kong DB-less API gateway.
+- The FastAPI API gateway support service as Kong's health upstream.
 - The scaffold worker process.
 
-The API health endpoint is available at:
+The browser-facing API health endpoint is available through Kong at:
 
 ```sh
-curl http://localhost:8000/health
+curl http://127.0.0.1:${API_HOST_PORT:-8000}/api/v1/health
 ```
 
 Set `API_HOST_PORT` in `.env` to publish the API on a different host port.
-The API container still listens on port `8000` internally so Compose
-healthchecks and service routing remain stable.
+The Kong proxy still listens on port `8000` inside the container, and the
+upstream FastAPI service also listens on port `8000` inside the Compose network.
+Compose healthchecks and service routing use those internal ports.
+
+For running just the upstream FastAPI process on the host without Kong:
+
+```sh
+make run-api
+curl http://127.0.0.1:8000/health
+```
 
 Stop the stack without deleting local database state:
 
@@ -269,9 +316,9 @@ Before running product code that calls AWS, authenticate on the host:
 aws sso login --profile gridlens-dev
 ```
 
-The scaffold API and worker do not call Cognito, S3, SQS, or Bedrock during
-startup or default tests. AWS behavior in this checkpoint is limited to
-configuration and the read-only `~/.aws` mount contract.
+The scaffold FastAPI services and workers do not call Cognito, S3, SQS, or
+Bedrock during startup or default tests. AWS behavior in this foundation runtime
+is limited to configuration and the read-only `~/.aws` mount contract.
 
 ## Debugging Ports
 

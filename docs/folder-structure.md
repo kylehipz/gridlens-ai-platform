@@ -66,38 +66,37 @@ Recommended structure:
 ```text
 services/
 ├── api-gateway/
-├── identity-service/
-├── dataset-catalog-service/
-├── ingestion-service/
-├── transformation-service/
-├── evaluation-service/
-├── reporting-service/
-├── rag-service/
-├── audit-service/
-└── usage-cost-service/
+├── identity-tenant-service/
+├── data-operations-service/
+├── assistant-service/
+├── program-evaluation-service/
+├── insights-reporting-service/
+├── governance-service/
+└── alerts-anomalies-service/
 ```
 
 Service responsibilities:
 
-- `api-gateway/`: backend-for-frontend entry point, HTTP routing, request
-  validation, auth enforcement, tenant context attachment, and response models.
-- `identity-service/`: tenants, users, roles, invitations, tenant settings, and
-  feature flags.
-- `dataset-catalog-service/`: dataset metadata, schema definitions, source-file
-  registration, status, and lineage records.
-- `ingestion-service/`: upload registration, file inspection, validation,
-  quarantine handling, and ingestion job orchestration.
-- `transformation-service/`: normalization from raw inputs into curated,
-  queryable, tenant-scoped tables.
-- `evaluation-service/`: program evaluation configuration, baseline modeling,
-  savings estimation, anomaly generation, and model-run metadata.
-- `reporting-service/`: evidence packages, generated summaries, downloadable
-  exports, and scheduled reports.
-- `rag-service/`: document parsing, chunking, embeddings, retrieval, prompt
-  orchestration, citations, refusals, and RAG evaluation.
-- `audit-service/`: security, data, job, AI, and business audit events.
-- `usage-cost-service/`: tenant-level usage tracking for storage, processed
-  rows, jobs, API calls, LLM tokens, and estimated cost.
+- `api-gateway/`: FastAPI upstream support for local gateway health and future
+  gateway-adjacent backend behavior. Kong owns browser-facing `/api/v1`
+  routing in local development from `infra/local/kong/kong.yml`.
+- `identity-tenant-service/`: tenants, users, roles, invitations, tenant
+  settings, feature flags, and membership lifecycle.
+- `data-operations-service/`: files, datasets, ingestion coordination, data
+  quality, normalized operational data, utility accounts, meters, billing, and
+  rate plans.
+- `assistant-service/`: assistant sessions, source documents, chunking,
+  embeddings, retrieval, prompt orchestration, citations, refusals, and RAG
+  evaluation.
+- `program-evaluation-service/`: program evaluation configuration,
+  participation, baseline modeling, savings estimation, evaluation anomalies,
+  and model-run metadata.
+- `insights-reporting-service/`: dashboards, evidence packages, generated
+  summaries, downloadable exports, and scheduled reports.
+- `governance-service/`: audit views, platform operational governance, policy
+  surfaces, and cross-service compliance support.
+- `alerts-anomalies-service/`: alert rules, triggered alert events, anomaly
+  review workflows, and resolution metadata.
 
 Each Python service should follow the same internal layering:
 
@@ -366,10 +365,10 @@ Expected root-level files:
 ## Naming Conventions
 
 - Use lowercase kebab-case for directories that represent deployable services,
-  such as `ingestion-service`.
+  such as `data-operations-service`.
 - Use lowercase kebab-case for documentation and scripts.
 - Use Python package names with underscores, such as
-  `gridlens_ingestion_service`.
+  `gridlens_data_operations_service`.
 - Keep generated files in clearly named generated directories or document how
   they are produced.
 - Prefer explicit names over vague names such as `common`, `misc`, `utils`, or
