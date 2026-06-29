@@ -60,14 +60,32 @@ class LocalRuntimeConfigTests(TestCase):
         worker_dockerfile = (
             ROOT / "workers" / "local-runtime-worker" / "Dockerfile"
         ).read_text()
+        pyproject = (ROOT / "pyproject.toml").read_text()
 
-        self.assertIn("debugpy>=1.8,<2", api_dockerfile)
-        self.assertIn("debugpy>=1.8,<2", worker_dockerfile)
+        self.assertIn("debugpy>=1.8,<2", pyproject)
+        self.assertIn("pip install --no-cache-dir \".[dev]\"", api_dockerfile)
+        self.assertIn("pip install --no-cache-dir \".[dev]\"", worker_dockerfile)
         self.assertIn("/app/devtools/reload_debug.py", dev_compose)
         self.assertIn("gridlens_api_gateway.main", dev_compose)
         self.assertIn("API_DEBUG_PORT", dev_compose)
         self.assertIn("gridlens_local_runtime_worker.main", dev_compose)
         self.assertIn("WORKER_DEBUG_PORT", dev_compose)
+
+    def test_docker_builds_use_root_pyproject_without_local_artifacts(self) -> None:
+        compose = (ROOT / "docker-compose.yml").read_text()
+        dockerignore = (ROOT / ".dockerignore").read_text()
+        api_dockerfile = (ROOT / "services" / "api-gateway" / "Dockerfile").read_text()
+        worker_dockerfile = (
+            ROOT / "workers" / "local-runtime-worker" / "Dockerfile"
+        ).read_text()
+
+        self.assertIn("context: .", compose)
+        self.assertIn("dockerfile: services/api-gateway/Dockerfile", compose)
+        self.assertIn("dockerfile: workers/local-runtime-worker/Dockerfile", compose)
+        self.assertIn("COPY pyproject.toml ./", api_dockerfile)
+        self.assertIn("COPY pyproject.toml ./", worker_dockerfile)
+        self.assertIn(".venv", dockerignore)
+        self.assertIn(".git", dockerignore)
 
     def test_runtime_files_do_not_include_static_aws_credentials(self) -> None:
         secret_pattern = re.compile(

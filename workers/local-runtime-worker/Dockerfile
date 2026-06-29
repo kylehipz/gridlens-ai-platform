@@ -6,15 +6,18 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 RUN groupadd --system app && useradd --system --gid app --home-dir /home/app --create-home app
 WORKDIR /app
-COPY src ./src
+COPY pyproject.toml ./
 
 FROM base AS dev
-RUN pip install --no-cache-dir "debugpy>=1.8,<2"
-COPY devtools ./devtools
+RUN pip install --no-cache-dir ".[dev]"
+COPY workers/local-runtime-worker/src ./src
+COPY workers/local-runtime-worker/devtools ./devtools
 USER app
 EXPOSE 5679
 CMD ["python", "-m", "gridlens_local_runtime_worker.main"]
 
 FROM base AS runtime
+RUN pip install --no-cache-dir .
+COPY workers/local-runtime-worker/src ./src
 USER app
 CMD ["python", "-m", "gridlens_local_runtime_worker.main"]

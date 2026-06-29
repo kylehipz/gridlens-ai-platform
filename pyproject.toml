@@ -11,6 +11,7 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = [
+    "debugpy>=1.8,<2",
     "pytest>=8.2,<9",
 ]
 
