@@ -1,6 +1,6 @@
+import json
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-import json
 
 from gridlens_api_gateway.config import load_settings
 

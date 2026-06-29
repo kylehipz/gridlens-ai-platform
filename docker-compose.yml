@@ -24,7 +24,8 @@ services:
 
   api:
     build:
-      context: ./services/api-gateway
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
       target: runtime
     environment:
       APP_ENV: ${APP_ENV:-local}
@@ -63,7 +64,8 @@ services:
 
   worker:
     build:
-      context: ./workers/local-runtime-worker
+      context: .
+      dockerfile: workers/local-runtime-worker/Dockerfile
       target: runtime
     environment:
       APP_ENV: ${APP_ENV:-local}

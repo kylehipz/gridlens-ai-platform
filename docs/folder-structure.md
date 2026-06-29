@@ -185,6 +185,21 @@ Common library responsibilities:
 Libraries should be small and intentionally versioned. Avoid turning `libs/`
 into a dumping ground for convenience functions.
 
+Current implementation notes:
+
+- Each Python library uses `src/gridlens_<capability>/` plus a local `tests/`
+  directory.
+- Root `pyproject.toml` configures pytest discovery and source import paths for
+  services, workers, shared libraries, and repo-level tests.
+- Tenant context contracts currently live in `libs/contracts` so auth, events,
+  and workers share one stable request-context shape.
+- AWS, Cognito, Bedrock, and PostgreSQL-specific behavior must stay behind
+  injectable seams or explicit live/local-db targets. Default library tests use
+  fake adapters and synthetic tenant data only.
+- Shared libraries must not import `services/`, `workers/`, frontend modules, or
+  product workflow packages for dataset ingestion, evaluation, reporting, or
+  assistant behavior.
+
 ### `frontend/`
 
 React and TypeScript web application for dashboards, tenant workflows,

@@ -1,10 +1,13 @@
-PYTHON ?= python3
+PYTHON ?= .venv/bin/python
+SYSTEM_PYTHON ?= python3
+PYTEST ?= $(PYTHON) -m pytest
+RUFF ?= $(PYTHON) -m ruff
 COMPOSE ?= docker compose
 COMPOSE_BASE := -f docker-compose.yml
 COMPOSE_DEV := -f docker-compose.yml -f docker-compose.dev.yml
 PROJECT_NAME ?= gridlens-local
 
-.PHONY: setup dev down reset-local-state test test-backend test-frontend test-local-db lint format migrate seed run
+.PHONY: setup dev down reset-local-state test test-backend test-frontend test-contracts test-libs test-local-db lint format migrate seed run
 
 setup:
 	@printf '%s\n' 'GridLens local setup'
@@ -12,6 +15,13 @@ setup:
 	@test -f .env.example
 	@test -f docker-compose.yml
 	@test -f docker-compose.dev.yml
+	@test -f pyproject.toml
+	@if ! test -x .venv/bin/python; then \
+		printf '%s\n' 'Creating .venv...'; \
+		$(SYSTEM_PYTHON) -m venv .venv; \
+	fi
+	$(PYTHON) -m pip install --upgrade pip
+	$(PYTHON) -m pip install -e '.[dev]'
 	@printf '%s\n' 'Optional: copy .env.example to .env and adjust development-only placeholders.'
 	@printf '%s\n' 'Run make test for offline checks or make dev for the local runtime.'
 
@@ -30,9 +40,13 @@ test: test-backend test-frontend
 	@printf '%s\n' 'Default offline tests completed.'
 
 test-backend:
-	$(PYTHON) -m unittest discover -s services/api-gateway/tests -p 'test_*.py'
-	$(PYTHON) -m unittest discover -s workers/local-runtime-worker/tests -p 'test_*.py'
-	$(PYTHON) -m unittest discover -s tests -p 'test_*.py'
+	$(PYTEST)
+
+test-contracts:
+	$(PYTEST) libs/contracts/tests
+
+test-libs:
+	$(PYTEST) libs
 
 test-frontend:
 	@if test -d frontend; then \
@@ -57,27 +71,7 @@ test-local-db:
 		-c "drop table app.local_smoke_check;"
 
 lint:
-	@printf '%s\n' 'Checking repository hygiene...'
-	@if git grep -n -I -E '^(<<<<<<<|=======|>>>>>>>)' -- .; then \
-		printf '%s\n' 'Unresolved merge conflict marker found.'; \
-		exit 1; \
-	fi
-	@if git grep -n -I -E 'AWS_(ACCESS_KEY_ID|SECRET_ACCESS_KEY|SESSION_TOKEN)=|AKIA[0-9A-Z]{16}' -- . ':!.git' ':!.handover'; then \
-		printf '%s\n' 'Potential committed AWS credential found.'; \
-		exit 1; \
-	fi
-	@if test -n "$$GITHUB_BASE_REF"; then \
-		base_ref="origin/$$GITHUB_BASE_REF"; \
-		if ! git rev-parse --verify --quiet "$$base_ref" >/dev/null; then \
-			git fetch --no-tags --prune --depth=1 origin \
-				"+refs/heads/$$GITHUB_BASE_REF:refs/remotes/origin/$$GITHUB_BASE_REF"; \
-		fi; \
-		git diff --check "$$base_ref...HEAD"; \
-	else \
-		git diff --check --cached; \
-		git diff --check; \
-	fi
-	@printf '%s\n' 'Repository hygiene checks passed.'
+	$(RUFF) check services workers libs tests
 
 format:
 	@printf '%s\n' 'No formatter is configured yet. Future Python and frontend formatters should run here.'

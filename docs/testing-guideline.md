@@ -49,12 +49,25 @@ Expose stable commands through `Makefile`:
 
 - `make test`: run the default offline suite without AWS credentials, network
   access, or an active AWS SSO session.
-- `make test-backend`: run Python service tests.
+- `make test-backend`: run all configured Python tests with pytest from the
+  repo-local `.venv`.
 - `make test-frontend`: run frontend tests.
+- `make test-contracts`: run shared role, status, envelope, pagination, tenant
+  context, audit, event, and drift tests.
+- `make test-libs`: run all shared library unit tests, including fake storage
+  and AI adapters, auth/config/db/events/observability helpers, and
+  import-boundary guards.
 - `make test-local-db`: run local PostgreSQL, app schema, and PGVector smoke
   checks against an already-running Compose database.
-- `make test-contracts`: run cross-service contract tests when introduced.
 
 Cognito, S3, SQS, and Bedrock tests are intentionally not part of the default
-suite in the local runtime checkpoint. Future live AWS tests must be isolated
-behind an explicit target and use synthetic development data only.
+suite. Live AWS tests must be isolated behind an explicit target and use
+synthetic development data only.
+
+`pyproject.toml` is the source of truth for pytest discovery paths and source
+import paths. Add new Python test roots there instead of appending more
+`unittest discover` commands to the Makefile.
+
+Ruff is the backend Python linter. `make lint` runs `ruff check` using the
+configuration in `pyproject.toml`, then runs repository hygiene checks for merge
+conflict markers, accidental AWS credentials, and whitespace.

@@ -1,7 +1,6 @@
-from pathlib import Path
 import re
+from pathlib import Path
 from unittest import TestCase
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -35,14 +34,14 @@ class LocalRuntimeConfigTests(TestCase):
         expected_bindings = [
             "127.0.0.1:${POSTGRES_PORT:-5432}:5432",
             "127.0.0.1:${API_HOST_PORT:-8000}:8000",
-            "127.0.0.1:${API_DEBUG_PORT:-5678}:5678",
-            "127.0.0.1:${WORKER_DEBUG_PORT:-5679}:5679",
         ]
 
         merged_compose = f"{compose}\n{dev_compose}"
         for binding in expected_bindings:
             with self.subTest(binding=binding):
                 self.assertIn(binding, merged_compose)
+        self.assertNotIn("API_DEBUG_PORT", merged_compose)
+        self.assertNotIn("WORKER_DEBUG_PORT", merged_compose)
 
     def test_api_host_port_is_separate_from_container_listener(self) -> None:
         compose = (ROOT / "docker-compose.yml").read_text()
@@ -54,20 +53,38 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertNotIn("${API_PORT:-8000}:8000", compose)
         self.assertNotIn("API_PORT=8000", env_example)
 
-    def test_dev_overlay_uses_debug_reload_commands(self) -> None:
+    def test_dev_overlay_runs_modules_without_devtools(self) -> None:
         dev_compose = (ROOT / "docker-compose.dev.yml").read_text()
         api_dockerfile = (ROOT / "services" / "api-gateway" / "Dockerfile").read_text()
         worker_dockerfile = (
             ROOT / "workers" / "local-runtime-worker" / "Dockerfile"
         ).read_text()
+        pyproject = (ROOT / "pyproject.toml").read_text()
 
-        self.assertIn("debugpy>=1.8,<2", api_dockerfile)
-        self.assertIn("debugpy>=1.8,<2", worker_dockerfile)
-        self.assertIn("/app/devtools/reload_debug.py", dev_compose)
+        self.assertNotIn("debugpy", pyproject)
+        self.assertIn("pip install --no-cache-dir \".[dev]\"", api_dockerfile)
+        self.assertIn("pip install --no-cache-dir \".[dev]\"", worker_dockerfile)
+        self.assertNotIn("devtools", api_dockerfile)
+        self.assertNotIn("devtools", worker_dockerfile)
+        self.assertNotIn("/app/devtools/reload_debug.py", dev_compose)
         self.assertIn("gridlens_api_gateway.main", dev_compose)
-        self.assertIn("API_DEBUG_PORT", dev_compose)
         self.assertIn("gridlens_local_runtime_worker.main", dev_compose)
-        self.assertIn("WORKER_DEBUG_PORT", dev_compose)
+
+    def test_docker_builds_use_root_pyproject_without_local_artifacts(self) -> None:
+        compose = (ROOT / "docker-compose.yml").read_text()
+        dockerignore = (ROOT / ".dockerignore").read_text()
+        api_dockerfile = (ROOT / "services" / "api-gateway" / "Dockerfile").read_text()
+        worker_dockerfile = (
+            ROOT / "workers" / "local-runtime-worker" / "Dockerfile"
+        ).read_text()
+
+        self.assertIn("context: .", compose)
+        self.assertIn("dockerfile: services/api-gateway/Dockerfile", compose)
+        self.assertIn("dockerfile: workers/local-runtime-worker/Dockerfile", compose)
+        self.assertIn("COPY pyproject.toml ./", api_dockerfile)
+        self.assertIn("COPY pyproject.toml ./", worker_dockerfile)
+        self.assertIn(".venv", dockerignore)
+        self.assertIn(".git", dockerignore)
 
     def test_runtime_files_do_not_include_static_aws_credentials(self) -> None:
         secret_pattern = re.compile(
