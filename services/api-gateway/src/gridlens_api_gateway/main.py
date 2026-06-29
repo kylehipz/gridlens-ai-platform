@@ -1,5 +1,5 @@
-from fastapi import FastAPI
 import uvicorn
+from fastapi import FastAPI
 
 from gridlens_api_gateway.api.health import router as health_router
 from gridlens_api_gateway.config import load_settings

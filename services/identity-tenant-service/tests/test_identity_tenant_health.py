@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-
 from gridlens_identity_tenant_service.main import app
 
 

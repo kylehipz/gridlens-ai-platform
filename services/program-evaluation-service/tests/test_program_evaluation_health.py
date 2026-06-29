@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-
 from gridlens_program_evaluation_service.main import app
 
 
