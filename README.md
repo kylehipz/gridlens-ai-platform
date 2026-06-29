@@ -40,7 +40,7 @@ services. It contains public-safe placeholders only.
 | `make test` | Run the available repository test targets. |
 | `make test-backend` | Run backend tests when `services/` exists; placeholder today. |
 | `make test-frontend` | Run frontend tests when `frontend/` exists; placeholder today. |
-| `make lint` | Check repository hygiene such as conflict markers and whitespace. |
+| `make lint` | Check repository hygiene such as conflict markers and whitespace, including committed PR diff whitespace in CI. |
 | `make format` | Placeholder for future formatters. |
 | `make migrate` | Placeholder for future database migrations. |
 | `make seed` | Placeholder for future synthetic development seed data. |

@@ -31,8 +31,17 @@ lint:
 		printf '%s\n' 'Unresolved merge conflict marker found.'; \
 		exit 1; \
 	fi
-	@git diff --check --cached
-	@git diff --check
+	@if test -n "$$GITHUB_BASE_REF"; then \
+		base_ref="origin/$$GITHUB_BASE_REF"; \
+		if ! git rev-parse --verify --quiet "$$base_ref" >/dev/null; then \
+			git fetch --no-tags --prune --depth=1 origin \
+				"+refs/heads/$$GITHUB_BASE_REF:refs/remotes/origin/$$GITHUB_BASE_REF"; \
+		fi; \
+		git diff --check "$$base_ref...HEAD"; \
+	else \
+		git diff --check --cached; \
+		git diff --check; \
+	fi
 	@printf '%s\n' 'Repository hygiene checks passed.'
 
 format:
