@@ -166,6 +166,93 @@ preserves named volumes. `make reset-local-state` is the explicit destructive
 reset path and removes local named volumes so PostgreSQL init scripts rerun on
 the next startup.
 
+## First Run
+
+From a fresh checkout:
+
+```sh
+make setup
+make test
+make dev
+```
+
+Copy `.env.example` to `.env` only when you need to override the public-safe
+defaults. The Compose files already provide non-secret defaults for the
+scaffold runtime.
+
+`make dev` starts:
+
+- PostgreSQL 16 with PGVector.
+- The scaffold API service.
+- The scaffold worker process.
+
+The API health endpoint is available at:
+
+```sh
+curl http://localhost:8000/health
+```
+
+Stop the stack without deleting local database state:
+
+```sh
+make down
+```
+
+Remove local database state and force PostgreSQL init scripts to rerun on next
+startup:
+
+```sh
+make reset-local-state
+```
+
+## PostgreSQL and PGVector
+
+The local database uses a named Docker volume so data persists across
+`make down`. On the first startup with an empty volume, scripts under
+`infra/local/postgres/init/` create:
+
+- the `gridlens_dev` local database;
+- the `gridlens_app` local app role;
+- the `app` schema;
+- the `vector` PostgreSQL extension.
+
+Verify PGVector:
+
+```sh
+docker compose -f docker-compose.yml exec -T postgres psql \
+  -U gridlens \
+  -d gridlens_dev \
+  -c "select extname from pg_extension where extname = 'vector';"
+```
+
+The result should include exactly one `vector` row. With the stack running,
+`make test-local-db` also verifies PostgreSQL connectivity, the `app` schema,
+and the app role's ability to create and drop a smoke-test table.
+
+PostgreSQL entrypoint scripts only run when the data volume is empty. If you
+change init scripts or role defaults, run `make reset-local-state` before
+starting the stack again.
+
+## Managed AWS Development Resources
+
+The local runtime is configured for managed development resources rather than
+local AWS emulators. `.env.example` includes development-only placeholders for:
+
+- Cognito user pool and client IDs.
+- S3 artifact bucket.
+- SQS job queue URL.
+- Bedrock text and embedding model IDs.
+
+Before running product code that calls AWS, authenticate on the host:
+
+```sh
+aws sso login --profile gridlens-dev
+```
+
+The scaffold API and worker do not call Cognito, S3, SQS, or Bedrock during
+startup or default tests. AWS behavior in this checkpoint is limited to
+configuration and the read-only `~/.aws` mount contract.
+
 ## Debugging Ports
 
 Each local service should expose a debugger port in the development overlay.
@@ -203,7 +290,11 @@ testing needs, but they are not canonical local development defaults.
 
 ## Tests
 
-Unit tests should run without network access and without AWS credentials.
+Default tests run without network access and without AWS credentials:
+
+```sh
+make test
+```
 
 Integration tests that exercise Cognito, S3, SQS, or Bedrock should be marked as
 live AWS tests and should require an explicit opt-in environment variable or
@@ -212,6 +303,39 @@ only.
 
 Tests should not assume a developer has an active SSO session unless the test
 target is explicitly documented as requiring AWS.
+
+## Troubleshooting
+
+### Expired AWS SSO Session
+
+If later product code receives AWS credential or token-expiration errors,
+refresh the host session:
+
+```sh
+aws sso login --profile gridlens-dev
+```
+
+Then restart affected containers if the SDK does not recover automatically:
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.dev.yml restart api worker
+```
+
+### Stale Database Volume
+
+If PGVector, roles, or schemas do not match the documented bootstrap state, the
+database volume probably predates the current init scripts. Run:
+
+```sh
+make reset-local-state
+make dev
+```
+
+### Missing AWS Config Directory
+
+Compose mounts `${HOME}/.aws` into app containers as read-only. If the directory
+does not exist, create it through normal AWS CLI setup on the host. Do not commit
+that directory or copy it into images.
 
 ## Security Rules
 

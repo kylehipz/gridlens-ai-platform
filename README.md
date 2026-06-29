@@ -34,6 +34,10 @@ It contains public-safe placeholders only. Local runtime AWS access uses managed
 development Cognito, S3, SQS, and Bedrock resources through the host AWS SSO
 profile; no AWS emulator endpoints or credentials are required by default.
 
+The local database is PostgreSQL 16 with PGVector enabled on first startup. Run
+`make test-local-db` while the stack is running to verify PostgreSQL
+connectivity, the `app` schema, and the `vector` extension.
+
 ## Commands
 
 | Command | Purpose |
