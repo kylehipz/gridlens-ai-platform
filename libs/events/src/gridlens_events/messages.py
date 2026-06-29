@@ -18,7 +18,11 @@ def build_event(
     payload: dict,
     attempt_number: int = 1,
 ) -> EventEnvelope:
+    if not source_resource_ids:
+        raise ValueError("source_resource_ids must include at least one resource ID.")
     source_id = next(iter(source_resource_ids.values()))
+    if not source_id:
+        raise ValueError("source_resource_ids values must be non-empty.")
     return EventEnvelope(
         event_type=event_type,
         event_version=1,

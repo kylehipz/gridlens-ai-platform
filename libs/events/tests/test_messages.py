@@ -44,6 +44,17 @@ class EventTests(unittest.TestCase):
         self.assertEqual(2, retry.retry.attempt_number)
         self.assertEqual(first.idempotency_key, idempotency_key(tenant_id="tenant_a", event_type=first.event_type, source_id="dataset_1"))
 
+    def test_event_requires_source_resource_ids(self):
+        with self.assertRaisesRegex(ValueError, "source_resource_ids"):
+            build_event(
+                event_type="generic.workflow.requested",
+                tenant_id="tenant_a",
+                correlation_id="corr_1",
+                actor=ActorContext.system("worker"),
+                source_resource_ids={},
+                payload={},
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
