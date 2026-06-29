@@ -182,3 +182,27 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertNotIn("LIVE_AWS", makefile)
         self.assertNotIn("AWS_NETWORK", makefile)
         self.assertIsNone(import_pattern.search(tests))
+
+    def test_ci_runs_typecheck_lint_and_mocked_aws_database_checks(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+
+        self.assertIn("image: pgvector/pgvector:pg16", workflow)
+        self.assertIn("run: make typecheck", workflow)
+        self.assertIn("run: make lint", workflow)
+        self.assertIn("run: make bootstrap-live-db", workflow)
+        self.assertIn("run: make test-live-db", workflow)
+        self.assertIn("POSTGRES_CONTAINER_ID=$container_id", workflow)
+        self.assertIn('AWS_EC2_METADATA_DISABLED: "true"', workflow)
+        self.assertIn("AWS_ACCESS_KEY_ID: mock", workflow)
+        self.assertIn("AWS_SECRET_ACCESS_KEY: mock", workflow)
+        self.assertIn("BEDROCK_TEXT_MODEL_ID: mock-text-model", workflow)
+
+    def test_makefile_exposes_live_database_targets_for_ci(self) -> None:
+        makefile = (ROOT / "Makefile").read_text()
+
+        self.assertIn("bootstrap-live-db:", makefile)
+        self.assertIn("test-live-db:", makefile)
+        self.assertIn("POSTGRES_CONTAINER_ID ?=", makefile)
+        self.assertIn("docker exec -e PGPASSWORD", makefile)
+        self.assertIn("CREATE EXTENSION IF NOT EXISTS vector", makefile)
+        self.assertIn("app.live_smoke_check", makefile)

@@ -38,6 +38,10 @@ The local database is PostgreSQL 16 with PGVector enabled on first startup. Run
 `make test-local-db` while the stack is running to verify PostgreSQL
 connectivity, the `app` schema, and the `vector` extension.
 
+CI runs type checking, linting, offline tests, and live database smoke tests
+against a PostgreSQL/PGVector service container. AWS-facing settings in CI use
+mock values only.
+
 ## Commands
 
 | Command | Purpose |
@@ -53,6 +57,9 @@ connectivity, the `app` schema, and the `vector` extension.
 | `make test-libs` | Run all shared library tests with pytest. |
 | `make test-frontend` | Run frontend tests when `frontend/` exists; placeholder today. |
 | `make test-local-db` | Smoke-test the running local PostgreSQL database, app schema, and PGVector extension. |
+| `make bootstrap-live-db` | Initialize a live PostgreSQL database with the app role, app schema, and PGVector extension. |
+| `make test-live-db` | Smoke-test a live PostgreSQL database reachable through `POSTGRES_HOST` and `POSTGRES_PORT`, or through `POSTGRES_CONTAINER_ID`. |
+| `make typecheck` | Run Pyright type checking. |
 | `make run-identity-tenant` | Run the identity tenant FastAPI service directly on the host without Kong. |
 | `make lint` | Run Ruff for backend Python linting plus repository hygiene checks. |
 | `make format` | Placeholder for future formatters. |
