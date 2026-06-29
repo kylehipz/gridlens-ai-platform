@@ -2,7 +2,7 @@ import json
 import unittest
 
 from gridlens_contracts.tenant_context import ActorContext
-from gridlens_events import build_event, idempotency_key, to_queue_message
+from gridlens_events import build_event, event_source_id, idempotency_key, to_queue_message
 
 
 class EventTests(unittest.TestCase):
@@ -44,6 +44,30 @@ class EventTests(unittest.TestCase):
         self.assertEqual(2, retry.retry.attempt_number)
         self.assertEqual(first.idempotency_key, idempotency_key(tenant_id="tenant_a", event_type=first.event_type, source_id="dataset_1"))
 
+    def test_multi_resource_event_idempotency_key_is_order_stable(self):
+        actor = ActorContext.system("worker")
+        first = build_event(
+            event_type="generic.workflow.requested",
+            tenant_id="tenant_a",
+            correlation_id="corr_1",
+            actor=actor,
+            source_resource_ids={"dataset_id": "dataset_1", "job_id": "job_1"},
+            payload={},
+        )
+        second = build_event(
+            event_type="generic.workflow.requested",
+            tenant_id="tenant_a",
+            correlation_id="corr_1",
+            actor=actor,
+            source_resource_ids={"job_id": "job_1", "dataset_id": "dataset_1"},
+            payload={},
+        )
+        self.assertEqual(first.idempotency_key, second.idempotency_key)
+        self.assertEqual(
+            "dataset_id=dataset_1|job_id=job_1",
+            event_source_id({"job_id": "job_1", "dataset_id": "dataset_1"}),
+        )
+
     def test_event_requires_source_resource_ids(self):
         with self.assertRaisesRegex(ValueError, "source_resource_ids"):
             build_event(
@@ -52,6 +76,15 @@ class EventTests(unittest.TestCase):
                 correlation_id="corr_1",
                 actor=ActorContext.system("worker"),
                 source_resource_ids={},
+                payload={},
+            )
+        with self.assertRaisesRegex(ValueError, "non-empty"):
+            build_event(
+                event_type="generic.workflow.requested",
+                tenant_id="tenant_a",
+                correlation_id="corr_1",
+                actor=ActorContext.system("worker"),
+                source_resource_ids={"dataset_id": "dataset_1", "job_id": ""},
                 payload={},
             )
 

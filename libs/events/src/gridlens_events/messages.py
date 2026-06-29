@@ -8,6 +8,16 @@ def idempotency_key(*, tenant_id: str, event_type: str, source_id: str) -> str:
     return f"{tenant_id}:{event_type}:{source_id}"
 
 
+def event_source_id(source_resource_ids: dict[str, str]) -> str:
+    if not source_resource_ids:
+        raise ValueError("source_resource_ids must include at least one resource ID.")
+    if any(not value for value in source_resource_ids.values()):
+        raise ValueError("source_resource_ids values must be non-empty.")
+    if len(source_resource_ids) == 1:
+        return next(iter(source_resource_ids.values()))
+    return "|".join(f"{key}={value}" for key, value in sorted(source_resource_ids.items()))
+
+
 def build_event(
     *,
     event_type: str,
@@ -18,11 +28,7 @@ def build_event(
     payload: dict,
     attempt_number: int = 1,
 ) -> EventEnvelope:
-    if not source_resource_ids:
-        raise ValueError("source_resource_ids must include at least one resource ID.")
-    source_id = next(iter(source_resource_ids.values()))
-    if not source_id:
-        raise ValueError("source_resource_ids values must be non-empty.")
+    source_id = event_source_id(source_resource_ids)
     return EventEnvelope(
         event_type=event_type,
         event_version=1,
