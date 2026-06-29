@@ -11,9 +11,8 @@ COPY pyproject.toml ./
 FROM base AS dev
 RUN pip install --no-cache-dir ".[dev]"
 COPY services/api-gateway/src ./src
-COPY services/api-gateway/devtools ./devtools
 USER app
-EXPOSE 8000 5678
+EXPOSE 8000
 CMD ["python", "-m", "gridlens_api_gateway.main"]
 
 FROM base AS runtime

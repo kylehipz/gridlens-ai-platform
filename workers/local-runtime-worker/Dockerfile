@@ -11,9 +11,7 @@ COPY pyproject.toml ./
 FROM base AS dev
 RUN pip install --no-cache-dir ".[dev]"
 COPY workers/local-runtime-worker/src ./src
-COPY workers/local-runtime-worker/devtools ./devtools
 USER app
-EXPOSE 5679
 CMD ["python", "-m", "gridlens_local_runtime_worker.main"]
 
 FROM base AS runtime
