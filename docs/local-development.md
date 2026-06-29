@@ -55,7 +55,7 @@ services:
   api:
     environment:
       AWS_PROFILE: gridlens-dev
-      AWS_REGION: us-east-1
+      AWS_REGION: ap-southeast-1
       AWS_SDK_LOAD_CONFIG: "1"
       HOME: /home/app
     volumes:
@@ -182,8 +182,21 @@ For example:
 | Reporting service | 8050 | 5684 |
 | Worker processes | n/a | Service-specific |
 
-Exact ports may change as implementation begins, but every service should have
-a documented debugger port and avoid collisions with other local services.
+The first local runtime publishes the scaffolded API on port `8000`, the API
+debugger on port `5678`, and the worker debugger on port `5679`. Exact ports for
+later services may change as implementation begins, but every service should
+have a documented debugger port and avoid collisions with other local services.
+
+## Environment Variables
+
+`.env.example` is the public-safe environment contract for local development.
+It includes local PostgreSQL connection values, scaffold service ports, AWS SSO
+profile settings, and development-only placeholders for managed Cognito, S3,
+SQS, and Bedrock resources.
+
+The default local runtime does not require MinIO, LocalStack, ElasticMQ, or
+other AWS emulators. Endpoint override variables may be added later for explicit
+testing needs, but they are not canonical local development defaults.
 
 ## Tests
 

@@ -29,8 +29,10 @@ has the expected baseline files. `make test` succeeds in the current docs-only
 state and delegates to backend and frontend placeholder targets until those
 subsystems exist.
 
-For local configuration, copy or inspect `.env.example` before running future
-services. It contains public-safe placeholders only.
+For local configuration, copy or inspect `.env.example` before running services.
+It contains public-safe placeholders only. Local runtime AWS access uses managed
+development Cognito, S3, SQS, and Bedrock resources through the host AWS SSO
+profile; no AWS emulator endpoints or credentials are required by default.
 
 ## Commands
 
