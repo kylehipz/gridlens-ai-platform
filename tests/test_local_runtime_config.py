@@ -54,6 +54,21 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertNotIn("${API_PORT:-8000}:8000", compose)
         self.assertNotIn("API_PORT=8000", env_example)
 
+    def test_dev_overlay_uses_debug_reload_commands(self) -> None:
+        dev_compose = (ROOT / "docker-compose.dev.yml").read_text()
+        api_dockerfile = (ROOT / "services" / "api-gateway" / "Dockerfile").read_text()
+        worker_dockerfile = (
+            ROOT / "workers" / "local-runtime-worker" / "Dockerfile"
+        ).read_text()
+
+        self.assertIn("debugpy>=1.8,<2", api_dockerfile)
+        self.assertIn("debugpy>=1.8,<2", worker_dockerfile)
+        self.assertIn("/app/devtools/reload_debug.py", dev_compose)
+        self.assertIn("gridlens_api_gateway.main", dev_compose)
+        self.assertIn("API_DEBUG_PORT", dev_compose)
+        self.assertIn("gridlens_local_runtime_worker.main", dev_compose)
+        self.assertIn("WORKER_DEBUG_PORT", dev_compose)
+
     def test_runtime_files_do_not_include_static_aws_credentials(self) -> None:
         secret_pattern = re.compile(
             r"AWS_(ACCESS_KEY_ID|SECRET_ACCESS_KEY|SESSION_TOKEN)\s*=|AKIA[0-9A-Z]{16}"

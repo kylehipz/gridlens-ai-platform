@@ -6,7 +6,7 @@ services:
       APP_ENV: development
       DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
       API_DEBUG_PORT: ${API_DEBUG_PORT:-5678}
-    command: ["python", "-m", "gridlens_api_gateway.main"]
+    command: ["python", "/app/devtools/reload_debug.py", "gridlens_api_gateway.main", "API_DEBUG_PORT", "/app/src"]
     ports:
       - "127.0.0.1:${API_DEBUG_PORT:-5678}:5678"
     volumes:
@@ -21,7 +21,7 @@ services:
       APP_ENV: development
       WORKER_DEBUG_PORT: ${WORKER_DEBUG_PORT:-5679}
       WORKER_HEARTBEAT_SECONDS: ${WORKER_HEARTBEAT_SECONDS:-10}
-    command: ["python", "-m", "gridlens_local_runtime_worker.main"]
+    command: ["python", "/app/devtools/reload_debug.py", "gridlens_local_runtime_worker.main", "WORKER_DEBUG_PORT", "/app/src"]
     ports:
       - "127.0.0.1:${WORKER_DEBUG_PORT:-5679}:5679"
     volumes:
