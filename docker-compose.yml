@@ -43,8 +43,6 @@ services:
       SQS_QUEUE_URL: ${SQS_QUEUE_URL:-https://sqs.ap-southeast-1.amazonaws.com/000000000000/gridlens-dev-jobs}
       BEDROCK_TEXT_MODEL_ID: ${BEDROCK_TEXT_MODEL_ID:-anthropic.claude-3-haiku-20240307-v1:0}
       BEDROCK_EMBEDDING_MODEL_ID: ${BEDROCK_EMBEDDING_MODEL_ID:-amazon.titan-embed-text-v2:0}
-    ports:
-      - "127.0.0.1:${API_HOST_PORT:-8000}:8000"
     volumes:
       - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
@@ -56,6 +54,34 @@ services:
         - python
         - -c
         - "import json, urllib.request; assert json.load(urllib.request.urlopen('http://127.0.0.1:8000/health'))['status'] == 'ok'"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - gridlens-local
+
+  kong:
+    image: kong:3.9
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 127.0.0.1:8001
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-8000}:8000"
+    volumes:
+      - ./infra/local/kong/kong.yml:/kong/declarative/kong.yml:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - kong
+        - health
       interval: 10s
       timeout: 5s
       retries: 12
