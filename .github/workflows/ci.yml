@@ -78,8 +78,11 @@ jobs:
       - name: Lint
         run: make lint
 
-      - name: Offline tests
-        run: make test
+      - name: Backend offline tests
+        run: make test-backend
+
+      - name: Frontend offline tests
+        run: make test-frontend
 
       - name: Locate PostgreSQL service container
         run: |
