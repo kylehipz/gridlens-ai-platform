@@ -43,6 +43,9 @@ pnpm-debug.log*
 vite.config.*.timestamp-*
 frontend/dist/
 frontend/build/
+frontend/*.tsbuildinfo
+frontend/vite.config.d.ts
+frontend/vite.config.js
 storybook-static/
 
 # Test, coverage, and generated outputs

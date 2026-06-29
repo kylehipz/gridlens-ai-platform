@@ -1,22 +1,9 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
-
-function SignInPage() {
-  return (
-    <main className="auth-page">
-      <section className="auth-panel" aria-labelledby="signin-title">
-        <div className="brand-mark" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-          <span />
-        </div>
-        <p className="eyebrow">GridLens</p>
-        <h1 id="signin-title">Sign in</h1>
-        <p>Use your organization account to open a tenant workspace.</p>
-      </section>
-    </main>
-  );
-}
+import { AppShell } from "../components/AppShell";
+import { WorkspacePickerPage } from "../pages/WorkspacePickerPage";
+import { SignInPage } from "../pages/SignInPage";
+import { ProtectedRoute } from "./ProtectedRoute";
+import { appRoutes, defaultAppPath } from "./routeConfig";
 
 export function createAppRouter() {
   return createBrowserRouter([
@@ -25,8 +12,28 @@ export function createAppRouter() {
       element: <SignInPage />
     },
     {
+      element: <ProtectedRoute />,
+      children: [
+        {
+          path: "/workspaces",
+          element: <WorkspacePickerPage />
+        },
+        {
+          element: <AppShell />,
+          children: appRoutes.map((route) => ({
+            path: route.path,
+            element: route.element
+          }))
+        }
+      ]
+    },
+    {
+      path: "/",
+      element: <Navigate to={defaultAppPath} replace />
+    },
+    {
       path: "*",
-      element: <Navigate to="/signin" replace />
+      element: <Navigate to={defaultAppPath} replace />
     }
   ]);
 }
