@@ -28,6 +28,22 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertNotIn("AWS_SECRET_ACCESS_KEY", compose)
         self.assertNotIn("AWS_SESSION_TOKEN", compose)
 
+    def test_compose_published_ports_are_loopback_only(self) -> None:
+        compose = (ROOT / "docker-compose.yml").read_text()
+        dev_compose = (ROOT / "docker-compose.dev.yml").read_text()
+
+        expected_bindings = [
+            "127.0.0.1:${POSTGRES_PORT:-5432}:5432",
+            "127.0.0.1:${API_PORT:-8000}:8000",
+            "127.0.0.1:${API_DEBUG_PORT:-5678}:5678",
+            "127.0.0.1:${WORKER_DEBUG_PORT:-5679}:5679",
+        ]
+
+        merged_compose = f"{compose}\n{dev_compose}"
+        for binding in expected_bindings:
+            with self.subTest(binding=binding):
+                self.assertIn(binding, merged_compose)
+
     def test_runtime_files_do_not_include_static_aws_credentials(self) -> None:
         secret_pattern = re.compile(
             r"AWS_(ACCESS_KEY_ID|SECRET_ACCESS_KEY|SESSION_TOKEN)\s*=|AKIA[0-9A-Z]{16}"
