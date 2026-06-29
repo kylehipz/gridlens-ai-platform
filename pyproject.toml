@@ -26,7 +26,6 @@ packages = []
 addopts = "-ra"
 python_files = ["test_*.py"]
 testpaths = [
-    "services/api-gateway/tests",
     "services/identity-tenant-service/tests",
     "services/data-operations-service/tests",
     "services/assistant-service/tests",
@@ -34,7 +33,6 @@ testpaths = [
     "services/insights-reporting-service/tests",
     "services/governance-service/tests",
     "services/alerts-anomalies-service/tests",
-    "workers/local-runtime-worker/tests",
     "tests",
     "libs/contracts/tests",
     "libs/config/tests",
@@ -47,7 +45,6 @@ testpaths = [
     "libs/testing/tests",
 ]
 pythonpath = [
-    "services/api-gateway/src",
     "services/identity-tenant-service/src",
     "services/data-operations-service/src",
     "services/assistant-service/src",
@@ -55,7 +52,6 @@ pythonpath = [
     "services/insights-reporting-service/src",
     "services/governance-service/src",
     "services/alerts-anomalies-service/src",
-    "workers/local-runtime-worker/src",
     "libs/contracts/src",
     "libs/config/src",
     "libs/auth/src",

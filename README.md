@@ -43,8 +43,8 @@ connectivity, the `app` schema, and the `vector` extension.
 | Command | Purpose |
 |---|---|
 | `make setup` | Create `.venv`, install development dependencies from `pyproject.toml`, verify baseline files, and print setup guidance. |
-| `make dev` | Start PostgreSQL, Kong, the FastAPI gateway support service, and the scaffold worker with the development Compose overlay. |
-| `make dev-gateway` | Start only Kong and its upstream FastAPI health service. |
+| `make dev` | Start PostgreSQL, Kong, all scaffolded FastAPI services, and implemented service workers with the development Compose overlay. |
+| `make dev-gateway` | Start only Kong and its current upstream health service. |
 | `make down` | Stop the local Compose stack while preserving named volumes. |
 | `make reset-local-state` | Stop the stack and remove named local volumes so database init scripts rerun on next start. |
 | `make test` | Run the default offline repository test targets. |
@@ -53,7 +53,7 @@ connectivity, the `app` schema, and the `vector` extension.
 | `make test-libs` | Run all shared library tests with pytest. |
 | `make test-frontend` | Run frontend tests when `frontend/` exists; placeholder today. |
 | `make test-local-db` | Smoke-test the running local PostgreSQL database, app schema, and PGVector extension. |
-| `make run-api` | Run the upstream FastAPI gateway support service directly on the host without Kong. |
+| `make run-identity-tenant` | Run the identity tenant FastAPI service directly on the host without Kong. |
 | `make lint` | Run Ruff for backend Python linting plus repository hygiene checks. |
 | `make format` | Placeholder for future formatters. |
 | `make migrate` | Placeholder for future database migrations. |

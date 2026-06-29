@@ -188,7 +188,7 @@ them explicitly.
 The active scaffold route is:
 
 ```text
-GET /api/v1/health -> api:8000/health
+GET /api/v1/health -> identity-tenant-service:8000/health
 ```
 
 Use this target to run only the gateway path and its upstream API service:
@@ -201,7 +201,7 @@ curl http://127.0.0.1:${API_HOST_PORT:-8000}/api/v1/health
 The expected response body is public-safe scaffold JSON:
 
 ```json
-{"status":"ok","service":"api-gateway"}
+{"status":"ok","service":"identity-tenant-service"}
 ```
 
 ## First Run
@@ -238,8 +238,9 @@ scaffold runtime.
 
 - PostgreSQL 16 with PGVector.
 - Kong DB-less API gateway.
-- The FastAPI API gateway support service as Kong's health upstream.
-- The scaffold worker process.
+- All scaffolded FastAPI services.
+- Implemented service-owned worker placeholders for data operations, assistant,
+  program evaluation, and insights reporting.
 
 The browser-facing API health endpoint is available through Kong at:
 
@@ -248,14 +249,14 @@ curl http://127.0.0.1:${API_HOST_PORT:-8000}/api/v1/health
 ```
 
 Set `API_HOST_PORT` in `.env` to publish the API on a different host port.
-The Kong proxy still listens on port `8000` inside the container, and the
-upstream FastAPI service also listens on port `8000` inside the Compose network.
+The Kong proxy still listens on port `8000` inside the container, and each
+upstream FastAPI service listens on port `8000` inside the Compose network.
 Compose healthchecks and service routing use those internal ports.
 
-For running just the upstream FastAPI process on the host without Kong:
+For running just the identity tenant FastAPI process on the host without Kong:
 
 ```sh
-make run-api
+make run-identity-tenant
 curl http://127.0.0.1:8000/health
 ```
 
@@ -316,7 +317,7 @@ Before running product code that calls AWS, authenticate on the host:
 aws sso login --profile gridlens-dev
 ```
 
-The scaffold FastAPI services and workers do not call Cognito, S3, SQS, or
+The scaffold FastAPI services and service workers do not call Cognito, S3, SQS, or
 Bedrock during startup or default tests. AWS behavior in this foundation runtime
 is limited to configuration and the read-only `~/.aws` mount contract.
 
@@ -331,20 +332,21 @@ For example:
 
 | Component | HTTP port | Debug port |
 |---|---:|---:|
-| API gateway | 8000 | 5678 |
-| Identity service | 8010 | 5680 |
+| Kong proxy | 8000 | n/a |
+| Identity tenant service | 8010 | 5680 |
 | Data operations service | 8020 | 5681 |
 | Assistant service | 8030 | 5682 |
-| Evaluation service | 8040 | 5683 |
-| Reporting service | 8050 | 5684 |
+| Program evaluation service | 8040 | 5683 |
+| Insights reporting service | 8050 | 5684 |
+| Governance service | 8060 | 5685 |
+| Alerts anomalies service | 8070 | 5686 |
 | Worker processes | n/a | Service-specific |
 
-The first local runtime publishes the scaffolded API on host port `8000` by
-default, the API debugger on port `5678`, and the worker debugger on port
-`5679`. Use `API_HOST_PORT` to change the API host port without changing the
-container listener. Exact ports for later services may change as implementation
-begins, but every service should have a documented debugger port and avoid
-collisions with other local services.
+The local runtime publishes Kong on host port `8000` by default. Use
+`API_HOST_PORT` to change the gateway host port without changing the container
+listener. Service-specific debugger ports are deferred until debugger tooling is
+added, but every service should have a documented debugger port and avoid
+collisions with other local services when that happens.
 
 ## Environment Variables
 
@@ -387,7 +389,7 @@ aws sso login --profile gridlens-dev
 Then restart affected containers if the SDK does not recover automatically:
 
 ```sh
-docker compose -f docker-compose.yml -f docker-compose.dev.yml restart api worker
+docker compose -f docker-compose.yml -f docker-compose.dev.yml restart identity-tenant-service data-operations-worker
 ```
 
 ### Stale Database Volume

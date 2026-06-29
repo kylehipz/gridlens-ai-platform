@@ -3,7 +3,7 @@ _transform: true
 
 services:
   - name: gridlens-health-upstream
-    url: http://api:8000/health
+    url: http://identity-tenant-service:8000/health
     routes:
       - name: gridlens-api-v1-health
         paths:

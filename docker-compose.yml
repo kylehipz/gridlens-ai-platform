@@ -1,5 +1,55 @@
 name: gridlens-local
 
+x-api-environment: &api-environment
+  APP_ENV: ${APP_ENV:-local}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  API_HOST: ${API_HOST:-0.0.0.0}
+  API_PORT: 8000
+  DATABASE_URL: ${DATABASE_URL:-postgresql://gridlens_app:gridlens_app_local@postgres:5432/gridlens_dev}
+  AWS_PROFILE: ${AWS_PROFILE:-gridlens-dev}
+  AWS_REGION: ${AWS_REGION:-ap-southeast-1}
+  AWS_SDK_LOAD_CONFIG: "1"
+  HOME: /home/app
+  COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-gridlens-dev-user-pool}
+  COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-gridlens-dev-client}
+  S3_BUCKET_NAME: ${S3_BUCKET_NAME:-gridlens-dev-artifacts}
+  SQS_QUEUE_URL: ${SQS_QUEUE_URL:-https://sqs.ap-southeast-1.amazonaws.com/000000000000/gridlens-dev-jobs}
+  BEDROCK_TEXT_MODEL_ID: ${BEDROCK_TEXT_MODEL_ID:-anthropic.claude-3-haiku-20240307-v1:0}
+  BEDROCK_EMBEDDING_MODEL_ID: ${BEDROCK_EMBEDDING_MODEL_ID:-amazon.titan-embed-text-v2:0}
+
+x-worker-environment: &worker-environment
+  APP_ENV: ${APP_ENV:-local}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  WORKER_HEARTBEAT_SECONDS: ${WORKER_HEARTBEAT_SECONDS:-30}
+  DATABASE_URL: ${DATABASE_URL:-postgresql://gridlens_app:gridlens_app_local@postgres:5432/gridlens_dev}
+  AWS_PROFILE: ${AWS_PROFILE:-gridlens-dev}
+  AWS_REGION: ${AWS_REGION:-ap-southeast-1}
+  AWS_SDK_LOAD_CONFIG: "1"
+  HOME: /home/app
+  SQS_QUEUE_URL: ${SQS_QUEUE_URL:-https://sqs.ap-southeast-1.amazonaws.com/000000000000/gridlens-dev-jobs}
+  BEDROCK_TEXT_MODEL_ID: ${BEDROCK_TEXT_MODEL_ID:-anthropic.claude-3-haiku-20240307-v1:0}
+  BEDROCK_EMBEDDING_MODEL_ID: ${BEDROCK_EMBEDDING_MODEL_ID:-amazon.titan-embed-text-v2:0}
+
+x-api-healthcheck: &api-healthcheck
+  test:
+    - CMD
+    - python
+    - -c
+    - "import json, urllib.request; assert json.load(urllib.request.urlopen('http://127.0.0.1:8000/health'))['status'] == 'ok'"
+  interval: 10s
+  timeout: 5s
+  retries: 12
+
+x-worker-healthcheck: &worker-healthcheck
+  test:
+    - CMD
+    - python
+    - -c
+    - "print('ok')"
+  interval: 30s
+  timeout: 5s
+  retries: 3
+
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -22,41 +72,108 @@ services:
     networks:
       - gridlens-local
 
-  api:
+  identity-tenant-service:
     build:
       context: .
-      dockerfile: services/api-gateway/Dockerfile
+      dockerfile: services/identity-tenant-service/Dockerfile
       target: runtime
-    environment:
-      APP_ENV: ${APP_ENV:-local}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      API_HOST: ${API_HOST:-0.0.0.0}
-      API_PORT: 8000
-      DATABASE_URL: ${DATABASE_URL:-postgresql://gridlens_app:gridlens_app_local@postgres:5432/gridlens_dev}
-      AWS_PROFILE: ${AWS_PROFILE:-gridlens-dev}
-      AWS_REGION: ${AWS_REGION:-ap-southeast-1}
-      AWS_SDK_LOAD_CONFIG: "1"
-      HOME: /home/app
-      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-gridlens-dev-user-pool}
-      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-gridlens-dev-client}
-      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-gridlens-dev-artifacts}
-      SQS_QUEUE_URL: ${SQS_QUEUE_URL:-https://sqs.ap-southeast-1.amazonaws.com/000000000000/gridlens-dev-jobs}
-      BEDROCK_TEXT_MODEL_ID: ${BEDROCK_TEXT_MODEL_ID:-anthropic.claude-3-haiku-20240307-v1:0}
-      BEDROCK_EMBEDDING_MODEL_ID: ${BEDROCK_EMBEDDING_MODEL_ID:-amazon.titan-embed-text-v2:0}
+    environment: *api-environment
     volumes:
       - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
       postgres:
         condition: service_healthy
-    healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - "import json, urllib.request; assert json.load(urllib.request.urlopen('http://127.0.0.1:8000/health'))['status'] == 'ok'"
-      interval: 10s
-      timeout: 5s
-      retries: 12
+    healthcheck: *api-healthcheck
+    networks:
+      - gridlens-local
+
+  data-operations-service:
+    build:
+      context: .
+      dockerfile: services/data-operations-service/Dockerfile
+      target: runtime
+    environment: *api-environment
+    volumes:
+      - ${HOME}/.aws:/home/app/.aws:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck: *api-healthcheck
+    networks:
+      - gridlens-local
+
+  assistant-service:
+    build:
+      context: .
+      dockerfile: services/assistant-service/Dockerfile
+      target: runtime
+    environment: *api-environment
+    volumes:
+      - ${HOME}/.aws:/home/app/.aws:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck: *api-healthcheck
+    networks:
+      - gridlens-local
+
+  program-evaluation-service:
+    build:
+      context: .
+      dockerfile: services/program-evaluation-service/Dockerfile
+      target: runtime
+    environment: *api-environment
+    volumes:
+      - ${HOME}/.aws:/home/app/.aws:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck: *api-healthcheck
+    networks:
+      - gridlens-local
+
+  insights-reporting-service:
+    build:
+      context: .
+      dockerfile: services/insights-reporting-service/Dockerfile
+      target: runtime
+    environment: *api-environment
+    volumes:
+      - ${HOME}/.aws:/home/app/.aws:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck: *api-healthcheck
+    networks:
+      - gridlens-local
+
+  governance-service:
+    build:
+      context: .
+      dockerfile: services/governance-service/Dockerfile
+      target: runtime
+    environment: *api-environment
+    volumes:
+      - ${HOME}/.aws:/home/app/.aws:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck: *api-healthcheck
+    networks:
+      - gridlens-local
+
+  alerts-anomalies-service:
+    build:
+      context: .
+      dockerfile: services/alerts-anomalies-service/Dockerfile
+      target: runtime
+    environment: *api-environment
+    volumes:
+      - ${HOME}/.aws:/home/app/.aws:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck: *api-healthcheck
     networks:
       - gridlens-local
 
@@ -75,7 +192,7 @@ services:
     volumes:
       - ./infra/local/kong/kong.yml:/kong/declarative/kong.yml:ro
     depends_on:
-      api:
+      identity-tenant-service:
         condition: service_healthy
     healthcheck:
       test:
@@ -88,32 +205,67 @@ services:
     networks:
       - gridlens-local
 
-  worker:
+  data-operations-worker:
     build:
       context: .
-      dockerfile: workers/local-runtime-worker/Dockerfile
+      dockerfile: services/data-operations-service/Dockerfile
       target: runtime
-    environment:
-      APP_ENV: ${APP_ENV:-local}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      DATABASE_URL: ${DATABASE_URL:-postgresql://gridlens_app:gridlens_app_local@postgres:5432/gridlens_dev}
-      AWS_PROFILE: ${AWS_PROFILE:-gridlens-dev}
-      AWS_REGION: ${AWS_REGION:-ap-southeast-1}
-      AWS_SDK_LOAD_CONFIG: "1"
-      HOME: /home/app
-      SQS_QUEUE_URL: ${SQS_QUEUE_URL:-https://sqs.ap-southeast-1.amazonaws.com/000000000000/gridlens-dev-jobs}
-      BEDROCK_TEXT_MODEL_ID: ${BEDROCK_TEXT_MODEL_ID:-anthropic.claude-3-haiku-20240307-v1:0}
-      BEDROCK_EMBEDDING_MODEL_ID: ${BEDROCK_EMBEDDING_MODEL_ID:-amazon.titan-embed-text-v2:0}
+    environment: *worker-environment
+    command: ["python", "-m", "gridlens_data_operations_service.workers.main"]
     volumes:
       - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
       postgres:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "print('ok')"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
+    healthcheck: *worker-healthcheck
+    networks:
+      - gridlens-local
+
+  assistant-worker:
+    build:
+      context: .
+      dockerfile: services/assistant-service/Dockerfile
+      target: runtime
+    environment: *worker-environment
+    command: ["python", "-m", "gridlens_assistant_service.workers.main"]
+    volumes:
+      - ${HOME}/.aws:/home/app/.aws:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck: *worker-healthcheck
+    networks:
+      - gridlens-local
+
+  program-evaluation-worker:
+    build:
+      context: .
+      dockerfile: services/program-evaluation-service/Dockerfile
+      target: runtime
+    environment: *worker-environment
+    command: ["python", "-m", "gridlens_program_evaluation_service.workers.main"]
+    volumes:
+      - ${HOME}/.aws:/home/app/.aws:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck: *worker-healthcheck
+    networks:
+      - gridlens-local
+
+  insights-reporting-worker:
+    build:
+      context: .
+      dockerfile: services/insights-reporting-service/Dockerfile
+      target: runtime
+    environment: *worker-environment
+    command: ["python", "-m", "gridlens_insights_reporting_service.workers.main"]
+    volumes:
+      - ${HOME}/.aws:/home/app/.aws:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck: *worker-healthcheck
     networks:
       - gridlens-local
 

@@ -8,7 +8,6 @@ from fastapi import FastAPI
 ROOT = Path(__file__).resolve().parents[1]
 
 SERVICES = {
-    "api-gateway": "gridlens_api_gateway",
     "identity-tenant-service": "gridlens_identity_tenant_service",
     "data-operations-service": "gridlens_data_operations_service",
     "assistant-service": "gridlens_assistant_service",

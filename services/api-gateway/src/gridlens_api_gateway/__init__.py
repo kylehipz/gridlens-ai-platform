@@ -1,1 +1,0 @@
-"""GridLens scaffold API gateway."""

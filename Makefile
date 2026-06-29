@@ -6,8 +6,9 @@ COMPOSE ?= docker compose
 COMPOSE_BASE := -f docker-compose.yml
 COMPOSE_DEV := -f docker-compose.yml -f docker-compose.dev.yml
 PROJECT_NAME ?= gridlens-local
+BUILD ?=
 
-.PHONY: setup dev dev-gateway down reset-local-state test test-backend test-frontend test-contracts test-libs test-local-db lint format migrate seed run run-api
+.PHONY: setup dev dev-gateway down reset-local-state test test-backend test-frontend test-contracts test-libs test-local-db lint format migrate seed run run-identity-tenant
 
 setup:
 	@printf '%s\n' 'GridLens local setup'
@@ -26,15 +27,15 @@ setup:
 	@printf '%s\n' 'Run make test for offline checks or make dev for the local runtime.'
 
 dev:
-	$(COMPOSE) $(COMPOSE_DEV) up --build
+	$(COMPOSE) $(COMPOSE_DEV) up $(BUILD)
 
 dev-gateway:
-	$(COMPOSE) $(COMPOSE_DEV) up --build api kong
+	$(COMPOSE) $(COMPOSE_DEV) up --build identity-tenant-service kong
 
 run: dev
 
-run-api:
-	PYTHONPATH=services/api-gateway/src $(PYTHON) -m uvicorn gridlens_api_gateway.main:app --host 127.0.0.1 --port $${API_PORT:-8000}
+run-identity-tenant:
+	PYTHONPATH=services/identity-tenant-service/src $(PYTHON) -m uvicorn gridlens_identity_tenant_service.main:app --host 127.0.0.1 --port $${API_PORT:-8000}
 
 down:
 	$(COMPOSE) $(COMPOSE_BASE) down
@@ -77,7 +78,7 @@ test-local-db:
 		-c "drop table app.local_smoke_check;"
 
 lint:
-	$(RUFF) check services workers libs tests
+	$(RUFF) check services libs tests
 
 format:
 	@printf '%s\n' 'No formatter is configured yet. Future Python and frontend formatters should run here.'

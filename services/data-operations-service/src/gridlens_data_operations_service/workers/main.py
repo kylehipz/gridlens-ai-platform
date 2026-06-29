@@ -1,4 +1,7 @@
 import json
+import os
+import signal
+import time
 
 SERVICE_NAME = "data-operations-service"
 WORKER_NAME = "data-operations-worker"
@@ -9,4 +12,16 @@ def readiness() -> dict[str, str]:
 
 
 def main() -> None:
-    print(json.dumps(readiness(), sort_keys=True))
+    interval = float(os.getenv("WORKER_HEARTBEAT_SECONDS", "30"))
+    running = True
+
+    def stop(_signum: int, _frame: object) -> None:
+        nonlocal running
+        running = False
+
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
+
+    while running:
+        print(json.dumps(readiness(), sort_keys=True), flush=True)
+        time.sleep(interval)

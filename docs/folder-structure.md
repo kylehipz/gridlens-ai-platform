@@ -65,7 +65,6 @@ Recommended structure:
 
 ```text
 services/
-├── api-gateway/
 ├── identity-tenant-service/
 ├── data-operations-service/
 ├── assistant-service/
@@ -77,9 +76,6 @@ services/
 
 Service responsibilities:
 
-- `api-gateway/`: FastAPI upstream support for local gateway health and future
-  gateway-adjacent backend behavior. Kong owns browser-facing `/api/v1`
-  routing in local development from `infra/local/kong/kong.yml`.
 - `identity-tenant-service/`: tenants, users, roles, invitations, tenant
   settings, feature flags, and membership lifecycle.
 - `data-operations-service/`: files, datasets, ingestion coordination, data
