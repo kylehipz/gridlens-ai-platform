@@ -12,13 +12,17 @@ def redact_value(value: Any) -> Any:
         return f"{value[:2]}***{value[-2:]}"
     if "X-Amz-Signature=" in value:
         return "[redacted-url]"
-    if re.search(r"(secret|token|password)[=:]", value, re.IGNORECASE):
+    if re.search(r"Bearer\s+\S+", value, re.IGNORECASE):
+        return "[redacted]"
+    if re.search(r"(secret|token|password|api[_-]?key|credential)[=:]", value, re.IGNORECASE):
         return "[redacted]"
     return value
 
 
 def _redact_field(key: str, value: Any) -> Any:
-    if any(part in key.lower() for part in ("secret", "token", "password")):
+    normalized = "".join(character for character in key.lower() if character.isalnum())
+    sensitive_parts = ("apikey", "authorization", "credential", "password", "secret", "signature", "token")
+    if any(part in normalized for part in sensitive_parts):
         return "***"
     return redact_value(value)
 

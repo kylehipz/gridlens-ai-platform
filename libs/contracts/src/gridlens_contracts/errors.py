@@ -15,17 +15,35 @@ SENSITIVE_DETAIL_KEYS = {
     "signed_url",
 }
 
+SENSITIVE_KEY_PARTS = {
+    "apikey",
+    "authorization",
+    "credential",
+    "password",
+    "secret",
+    "signature",
+    "signedurl",
+    "token",
+}
+
 
 def sanitize_details(value: Any) -> Any:
     if isinstance(value, dict):
         return {
             key: sanitize_details(nested)
             for key, nested in value.items()
-            if key.lower() not in SENSITIVE_DETAIL_KEYS
+            if not _is_sensitive_detail_key(key)
         }
     if isinstance(value, list):
         return [sanitize_details(item) for item in value]
     return value
+
+
+def _is_sensitive_detail_key(key: str) -> bool:
+    normalized = "".join(character for character in key.lower() if character.isalnum())
+    if key.lower() in SENSITIVE_DETAIL_KEYS:
+        return True
+    return any(part in normalized for part in SENSITIVE_KEY_PARTS)
 
 
 @dataclass(frozen=True)

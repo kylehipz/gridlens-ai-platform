@@ -62,6 +62,24 @@ class EnvelopeTests(unittest.TestCase):
             payload["details"],
         )
 
+    def test_failed_response_strips_common_secret_key_variants(self):
+        payload = ErrorEnvelope(
+            code="upstream_error",
+            message="Provider failed.",
+            request_id="req_123",
+            details={
+                "access_token": "hidden",
+                "api_key": "hidden",
+                "authorization": "Bearer hidden",
+                "nested": {
+                    "refresh-token": "hidden",
+                    "signedUrl": "hidden",
+                    "safe": "kept",
+                },
+            },
+        ).to_dict()
+        self.assertEqual({"nested": {"safe": "kept"}}, payload["details"])
+
     def test_list_responses_share_pagination_fields(self):
         responses = [
             ListResponse(items=[], pagination=Pagination.from_page(limit=25, offset=0, total_count=0)).to_dict(),
