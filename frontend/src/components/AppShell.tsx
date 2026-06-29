@@ -12,6 +12,12 @@ export function AppShell() {
   const activeRoute = appRoutes.find((route) => route.path === location.pathname);
   const mainRoutes = appRoutes.filter((route) => route.section === "main");
   const governanceRoutes = appRoutes.filter((route) => route.section === "governance");
+  const workspaceInitials = workspace?.name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className="app-shell">
@@ -29,7 +35,7 @@ export function AppShell() {
         </div>
 
         <div className="workspace-chip">
-          <span className="workspace-avatar">NW</span>
+          <span className="workspace-avatar">{workspaceInitials ?? "GL"}</span>
           <span>
             <strong>{workspace?.name ?? "Choose workspace"}</strong>
             <small>{workspace?.domain ?? "Tenant workspace"}</small>
