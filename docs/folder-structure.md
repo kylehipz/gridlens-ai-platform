@@ -384,7 +384,8 @@ places:
 - Repositories enforce tenant filters and row-level security where supported.
 - Object-storage keys include tenant-safe partitioning.
 - Queue messages include tenant and correlation metadata.
-- RAG retrieval filters by tenant and approved document scope.
+- RAG retrieval filters by tenant, indexing readiness, and document
+  deprecation state.
 - Audit logs record tenant, actor, action, resource, and result.
 - Tests include cross-tenant denial cases for APIs, jobs, storage, vector
   search, reports, and exports.

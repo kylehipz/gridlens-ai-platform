@@ -18,7 +18,7 @@ GridLens uses separate names for storage artifacts and product concepts:
   not a user-facing product category.
 - **Datasets** are analytical input data such as meter readings, program
   participation, building attributes, account lists, and weather data.
-- **Assistant documents** are approved evidence sources for RAG, such as
+- **Assistant documents** are tenant-scoped evidence sources for RAG, such as
   methodology PDFs, data dictionaries, scope documents, and generated summaries.
 - **Reports** are saved report definitions and generated exports. Generated
   export files also use `file_objects` for storage metadata.
@@ -34,12 +34,15 @@ workflows.
   server-side.
 - **File bytes live outside the database.** Raw uploads, generated exports, and
   large intermediate artifacts live in S3-compatible object storage. The
-  database stores metadata, lineage, status, and curated queryable records.
-- **Dataset versions are first-class.** Each re-upload or replacement creates a
-  distinct version so evaluations and reports can identify the exact input used.
+  database stores metadata, lineage, storage state, and curated queryable
+  records.
+- **Dataset version history is deferred.** MVP datasets track the current
+  uploaded file, processing readiness, and quality summary directly. Full
+  version history can be added later when replacement comparison and historical
+  input selection are needed.
 - **Operational facts are traceable.** Imported readings, participation rows,
   weather observations, reports, assistant answers, and evaluation outputs link
-  back to source file objects, dataset versions, ingestion jobs, or generated
+  back to source file objects, datasets, ingestion jobs, or generated
   runs.
 - **Sensitive identifiers are masked and hashed.** Utility account numbers,
   meter numbers, and participant identifiers are stored as masked display values
@@ -99,7 +102,7 @@ erDiagram
         text storage_key
         text checksum_sha256
         bigint file_size_bytes
-        text status
+        text storage_status
         timestamptz created_at
         timestamptz updated_at
     }
@@ -107,23 +110,10 @@ erDiagram
     DATASETS {
         uuid id PK
         uuid tenant_id FK
+        uuid file_object_id FK
         text name
         text dataset_type
         text description
-        text status
-        uuid current_version_id FK
-        timestamptz deprecated_at
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    DATASET_VERSIONS {
-        uuid id PK
-        uuid tenant_id FK
-        uuid dataset_id FK
-        uuid file_object_id FK
-        int version_number
-        text version_label
         text processing_status
         text quality_status
         text schema_fingerprint
@@ -131,6 +121,7 @@ erDiagram
         int valid_records
         int invalid_records
         timestamptz ready_at
+        timestamptz deprecated_at
         timestamptz created_at
         timestamptz updated_at
     }
@@ -151,7 +142,7 @@ erDiagram
         uuid id PK
         uuid tenant_id FK
         uuid ingestion_source_id FK
-        uuid dataset_version_id FK
+        uuid dataset_id FK
         uuid file_object_id FK
         uuid started_by_user_id FK
         text job_type
@@ -172,7 +163,7 @@ erDiagram
         uuid id PK
         uuid tenant_id FK
         uuid ingestion_job_id FK
-        uuid dataset_version_id FK
+        uuid dataset_id FK
         int row_number
         text severity
         text error_code
@@ -184,7 +175,7 @@ erDiagram
     DATA_QUALITY_REPORTS {
         uuid id PK
         uuid tenant_id FK
-        uuid dataset_version_id FK
+        uuid dataset_id FK
         uuid ingestion_job_id FK
         text report_type
         text status
@@ -203,7 +194,7 @@ erDiagram
     PROPERTIES {
         uuid id PK
         uuid tenant_id FK
-        uuid dataset_version_id FK
+        uuid dataset_id FK
         text name
         text property_code
         text property_type
@@ -234,7 +225,7 @@ erDiagram
         uuid id PK
         uuid tenant_id FK
         uuid provider_id FK
-        uuid dataset_version_id FK
+        uuid dataset_id FK
         text account_name
         text account_number_hash
         text account_number_masked
@@ -249,7 +240,7 @@ erDiagram
         uuid tenant_id FK
         uuid property_id FK
         uuid utility_account_id FK
-        uuid dataset_version_id FK
+        uuid dataset_id FK
         text meter_number_hash
         text meter_number_masked
         text service_type
@@ -265,7 +256,7 @@ erDiagram
         uuid id PK
         uuid tenant_id FK
         uuid meter_id FK
-        uuid dataset_version_id FK
+        uuid dataset_id FK
         uuid ingestion_job_id FK
         timestamptz period_start_at
         timestamptz period_end_at
@@ -296,7 +287,7 @@ erDiagram
         uuid program_id FK
         uuid property_id FK
         uuid utility_account_id FK
-        uuid dataset_version_id FK
+        uuid dataset_id FK
         text participant_identifier_hash
         text participant_identifier_masked
         text participation_status
@@ -313,7 +304,7 @@ erDiagram
     WEATHER_OBSERVATIONS {
         uuid id PK
         uuid tenant_id FK
-        uuid dataset_version_id FK
+        uuid dataset_id FK
         date observation_date
         text location_group
         numeric heating_degree_days
@@ -428,7 +419,7 @@ erDiagram
         uuid id PK
         uuid tenant_id FK
         uuid evaluation_run_id FK
-        uuid dataset_version_id FK
+        uuid dataset_id FK
         uuid data_quality_report_id FK
         text input_role
         boolean required
@@ -498,7 +489,7 @@ erDiagram
     ANOMALIES {
         uuid id PK
         uuid tenant_id FK
-        uuid dataset_version_id FK
+        uuid dataset_id FK
         uuid data_quality_report_id FK
         uuid evaluation_run_id FK
         uuid property_id FK
@@ -552,13 +543,11 @@ erDiagram
         uuid tenant_id FK
         uuid file_object_id FK
         uuid uploaded_by_user_id FK
-        uuid approved_by_user_id FK
         text title
         text document_type
-        text approval_status
         text indexing_status
         text processing_error
-        timestamptz approved_at
+        timestamptz deprecated_at
         timestamptz created_at
         timestamptz updated_at
     }
@@ -710,10 +699,9 @@ erDiagram
     APP_USERS ||--o{ FILE_OBJECTS : creates
 
     TENANTS ||--o{ DATASETS : owns
-    DATASETS ||--o{ DATASET_VERSIONS : versions
-    FILE_OBJECTS ||--o{ DATASET_VERSIONS : source_file_for
-    DATASET_VERSIONS ||--o{ INGESTION_JOBS : processed_by
-    DATASET_VERSIONS ||--o{ DATA_QUALITY_REPORTS : assessed_by
+    FILE_OBJECTS ||--o{ DATASETS : source_file_for
+    DATASETS ||--o{ INGESTION_JOBS : processed_by
+    DATASETS ||--o{ DATA_QUALITY_REPORTS : assessed_by
 
     TENANTS ||--o{ INGESTION_SOURCES : configures
     INGESTION_SOURCES ||--o{ INGESTION_JOBS : runs
@@ -748,7 +736,7 @@ erDiagram
     PROGRAMS ||--o{ EVALUATION_RUNS : evaluated_by
     APP_USERS ||--o{ EVALUATION_RUNS : creates
     EVALUATION_RUNS ||--o{ EVALUATION_INPUTS : uses
-    DATASET_VERSIONS ||--o{ EVALUATION_INPUTS : selected_as_input
+    DATASETS ||--o{ EVALUATION_INPUTS : selected_as_input
     DATA_QUALITY_REPORTS ||--o{ EVALUATION_INPUTS : qualifies_input
     EVALUATION_RUNS ||--o{ EVALUATION_PERIOD_RESULTS : produces
     EVALUATION_RUNS ||--o{ EVALUATION_PARTICIPANT_RESULTS : produces
@@ -761,7 +749,7 @@ erDiagram
     PROPERTIES ||--o{ ALERT_EVENTS : receives
     METERS ||--o{ ALERT_EVENTS : receives
 
-    DATASET_VERSIONS ||--o{ ANOMALIES : may_have
+    DATASETS ||--o{ ANOMALIES : may_have
     DATA_QUALITY_REPORTS ||--o{ ANOMALIES : may_have
     EVALUATION_RUNS ||--o{ ANOMALIES : may_have
     PROPERTIES ||--o{ ANOMALIES : has
@@ -776,7 +764,6 @@ erDiagram
     FILE_OBJECTS ||--o| ASSISTANT_DOCUMENTS : registered_as
     TENANTS ||--o{ ASSISTANT_DOCUMENTS : owns
     APP_USERS ||--o{ ASSISTANT_DOCUMENTS : uploads
-    APP_USERS ||--o{ ASSISTANT_DOCUMENTS : approves
 
     ASSISTANT_DOCUMENTS ||--o{ ASSISTANT_DOCUMENT_CHUNKS : split_into
     ASSISTANT_DOCUMENTS ||--o{ ASSISTANT_DOCUMENT_FLAGS : may_have
@@ -823,28 +810,27 @@ erDiagram
 
 | Table | Purpose | Important notes |
 | --- | --- | --- |
-| `file_objects` | Metadata for uploaded or generated files stored outside the database. | The database stores storage location, checksum, content type, status, and owner. File bytes remain in S3-compatible object storage. `object_purpose` distinguishes dataset upload, assistant source, bill file, generated report, evidence package, or intermediate artifact. |
+| `file_objects` | Metadata for uploaded or generated files stored outside the database. | The database stores storage location, checksum, content type, storage status, and owner. File bytes remain in S3-compatible object storage. `object_purpose` distinguishes dataset upload, assistant source, bill file, generated report, evidence package, or intermediate artifact. File status only describes whether the bytes are available, quarantined, deleted, or failed; it does not describe dataset readiness, assistant indexing, or job progress. |
 
 ### Dataset Catalog, Ingestion, and Data Quality
 
 | Table | Purpose | Important notes |
 | --- | --- | --- |
-| `datasets` | Tenant-owned analytical data asset shown in the dataset catalog. | Dataset types include `meter_readings`, `program_participation`, `building_attributes`, `weather_data`, `account_list`, and similar operational inputs. |
-| `dataset_versions` | One uploaded or replaced version of a dataset. | Links to the source `file_object`; stores processing and quality status, row counts, schema fingerprint, and readiness metadata. Evaluations must reference versions, not just datasets. |
+| `datasets` | Tenant-owned analytical data asset shown in the dataset catalog. | Dataset types include `meter_readings`, `program_participation`, `building_attributes`, `weather_data`, `account_list`, and similar operational inputs. MVP datasets link to the current source `file_object` and store processing status, quality status, row counts, schema fingerprint, and readiness metadata directly. Full dataset version history is deferred. |
 | `ingestion_sources` | Reusable source configurations, such as manual CSV upload, SFTP feed, provider API, or scheduled import. | `config_json` should contain non-secret configuration only; credentials belong in a secret manager. |
-| `ingestion_jobs` | Execution record for an import, parse, validation, or normalization run. | Tracks status, counters, retry attempts, timing, source file, dataset version, and user-readable failure reason. |
+| `ingestion_jobs` | Execution record for an import, parse, validation, or normalization run. | Tracks status, counters, retry attempts, timing, source file, dataset, and user-readable failure reason. |
 | `ingestion_errors` | Row-level or record-level import failures. | `raw_record` is useful for debugging but must follow the public-safe and privacy rules for the project. |
-| `data_quality_reports` | Aggregated validation result for a dataset version and ingestion job. | Stores blocking/warning/duplicate counts and quality score. `summary_json` can hold missing-value summaries, drift details, date ranges, and examples. |
+| `data_quality_reports` | Aggregated validation result for a dataset and ingestion job. | Stores blocking/warning/duplicate counts and quality score. `summary_json` can hold missing-value summaries, drift details, date ranges, and examples. |
 
 ### Utility Asset and Operational Data Model
 
 | Table | Purpose | Important notes |
 | --- | --- | --- |
-| `properties` | Tenant-owned buildings, sites, or facilities where utility consumption occurs. | `property_code` should be unique per tenant when supplied; records can link to the dataset version that introduced or last updated them. |
+| `properties` | Tenant-owned buildings, sites, or facilities where utility consumption occurs. | `property_code` should be unique per tenant when supplied; records can link to the dataset that introduced or last updated them. |
 | `utility_providers` | Reference data for utilities, suppliers, or distribution companies. | This table is shared reference data and does not require `tenant_id`; tenant-specific provider settings should live elsewhere if needed. |
 | `utility_accounts` | Tenant-owned accounts with a provider for a service such as electricity, gas, or water. | Store masked and hashed account numbers only. The hash supports deduplication and matching without retaining raw identifiers. |
 | `meters` | Physical or logical measuring devices attached to a property and utility account. | Retired meters remain for historical readings. |
-| `meter_readings` | Periodic usage facts imported from files, integrations, bills, or manual entry. | Readings link to both `dataset_versions` and `ingestion_jobs` for lineage and carry `quality_status` for downstream filtering. |
+| `meter_readings` | Periodic usage facts imported from files, integrations, bills, or manual entry. | Readings link to both `datasets` and `ingestion_jobs` for lineage and carry `quality_status` for downstream filtering. |
 | `weather_observations` | Weather features used by evaluations and quality caveats. | Supports weather dataset uploads and future weather-adjusted methods. Location grouping should match the tenant's site/location model. |
 
 ### Programs and Participation
@@ -869,12 +855,12 @@ erDiagram
 | Table | Purpose | Important notes |
 | --- | --- | --- |
 | `evaluation_runs` | Program evaluation or analytics run that produces savings, baseline, or impact summaries. | Stores selected program, period, methodology/model version, configuration, assumptions, limitations, summary, status, and approval metadata. |
-| `evaluation_inputs` | Join table identifying exact dataset versions used by an evaluation. | Supports source lineage, input validation, run comparison, and evidence packages. |
+| `evaluation_inputs` | Join table identifying datasets used by an evaluation. | Supports source lineage, input validation, run comparison, and evidence packages. Full per-upload version selection is deferred. |
 | `evaluation_period_results` | Aggregate results by month or selected period and optional segment. | Supports dashboard savings-over-time and segment comparison without unpacking `summary_json`. |
 | `evaluation_participant_results` | Participant-level or site-level results for authorized drilldown. | Supports analyst investigation of negative savings and outliers. |
 | `alert_rules` | Tenant-defined rules for surfacing quality, usage, cost, or anomaly conditions. | Rules can be scoped to a property, meter, or tenant-wide pattern through nullable scope columns. |
 | `alert_events` | Concrete alert occurrences produced by rules. | Events keep lifecycle status, trigger time, and resolution time for dashboards and audit. |
-| `anomalies` | Detected data or evaluation anomalies. | Can link to dataset versions, quality reports, evaluation runs, properties, meters, or a generic affected entity. Stores category, explanation, severity, and status for review workflows. |
+| `anomalies` | Detected data or evaluation anomalies. | Can link to datasets, quality reports, evaluation runs, properties, meters, or a generic affected entity. Stores category, explanation, severity, and status for review workflows. |
 
 ### Reporting
 
@@ -887,7 +873,7 @@ erDiagram
 
 | Table | Purpose | Important notes |
 | --- | --- | --- |
-| `assistant_documents` | Tenant-approved documents that can be indexed for AI retrieval. | Methodology PDFs, data dictionaries, scope documents, and approved generated summaries live here. Approval and indexing are separate states so unapproved content is never used as grounding evidence. |
+| `assistant_documents` | Tenant-scoped documents that can be indexed for AI retrieval. | Methodology PDFs, data dictionaries, scope documents, and generated summaries live here. MVP readiness is controlled by `indexing_status`; deprecated documents are excluded from new retrieval through `deprecated_at`. A formal approval workflow can be added later if governance requirements justify it. |
 | `assistant_document_chunks` | Searchable text chunks with embedding metadata. | Uses a vector column for semantic retrieval and metadata for filtering by document type, source, or period. |
 | `assistant_document_flags` | Review findings for unsafe, stale, sensitive, low-quality, or otherwise unsuitable assistant source content. | Flags can apply to an entire assistant document or to one chunk. |
 | `assistant_sessions` | Conversation container for one user in one tenant. | Sessions keep chat history grouped without making assistant state global. |
@@ -914,11 +900,9 @@ erDiagram
 | `file_objects` | `unique(tenant_id, storage_bucket, storage_key)` | Prevent two metadata rows from pointing to the same tenant-owned object. |
 | `file_objects` | `unique(tenant_id, checksum_sha256)` where `checksum_sha256 is not null and object_purpose = 'dataset_upload'` | Detect duplicate dataset uploads inside a tenant while allowing generated outputs to share content when needed. |
 | `datasets` | `unique(tenant_id, name)` | Keep dataset catalog names unambiguous inside a tenant. |
-| `datasets` | `current_version_id` must reference a `dataset_versions` row with the same `tenant_id` and `dataset_id` | Prevent catalog state from pointing across tenants or datasets. |
-| `dataset_versions` | `unique(tenant_id, dataset_id, version_number)` | Make dataset version references stable and human-explainable. |
-| `dataset_versions` | `unique(tenant_id, file_object_id)` where `file_object_id is not null` | Prevent the same uploaded file object from becoming multiple dataset versions accidentally. |
-| `ingestion_jobs` | `unique(tenant_id, dataset_version_id, job_type, attempt_number)` | Make retries explicit and auditable. |
-| `data_quality_reports` | `unique(tenant_id, dataset_version_id, ingestion_job_id, report_type)` | Avoid duplicate quality summaries for the same processing attempt. |
+| `datasets` | `unique(tenant_id, file_object_id)` where `file_object_id is not null` | Prevent the same uploaded file object from becoming multiple datasets accidentally. |
+| `ingestion_jobs` | `unique(tenant_id, dataset_id, job_type, attempt_number)` | Make retries explicit and auditable. |
+| `data_quality_reports` | `unique(tenant_id, dataset_id, ingestion_job_id, report_type)` | Avoid duplicate quality summaries for the same processing attempt. |
 | `properties` | `unique(tenant_id, property_code)` where `property_code is not null` | Allow tenant-local property codes without requiring global uniqueness. |
 | `utility_providers` | `unique(country, service_type, provider_code)` | Avoid duplicate provider reference records. |
 | `utility_accounts` | `unique(tenant_id, provider_id, account_number_hash)` where `account_number_hash is not null` | Detect duplicate account imports without storing raw account numbers. |
@@ -926,11 +910,11 @@ erDiagram
 | `meter_readings` | `unique(tenant_id, meter_id, period_start_at, period_end_at, reading_source)` | Prevent duplicate period readings from the same source. |
 | `programs` | `unique(tenant_id, program_code)` where `program_code is not null` | Keep program references stable inside a tenant. |
 | `program_participants` | `unique(tenant_id, program_id, participant_identifier_hash)` where `participant_identifier_hash is not null` | Prevent duplicate participant rows for the same program. |
-| `weather_observations` | `unique(tenant_id, dataset_version_id, observation_date, location_group)` | Prevent duplicate weather observations in one dataset version. |
+| `weather_observations` | `unique(tenant_id, dataset_id, observation_date, location_group)` | Prevent duplicate weather observations in one dataset. |
 | `billing_statements` | `unique(tenant_id, utility_account_id, statement_number)` where `statement_number is not null` | Avoid duplicate bills when a provider supplies stable statement numbers. |
 | `rate_components` | `check(tier_end is null or tier_end > tier_start)` | Keep tier ranges valid. |
 | `account_rate_plans` | Exclusion or application constraint preventing overlapping periods per `tenant_id, utility_account_id` | Ensure cost calculations pick one active rate plan for a given period. |
-| `evaluation_inputs` | `unique(tenant_id, evaluation_run_id, input_role, dataset_version_id)` | Avoid duplicate input links while allowing multiple inputs with different roles when needed. |
+| `evaluation_inputs` | `unique(tenant_id, evaluation_run_id, input_role, dataset_id)` | Avoid duplicate input links while allowing multiple inputs with different roles when needed. |
 | `evaluation_period_results` | `unique(tenant_id, evaluation_run_id, period_start, period_end, segment_json)` or equivalent digest | Prevent duplicate aggregate result rows for the same period/segment. |
 | `evaluation_participant_results` | `unique(tenant_id, evaluation_run_id, program_participant_id)` | Keep participant-level outputs stable for one run. |
 | `assistant_documents` | `unique(tenant_id, file_object_id)` | Avoid indexing the same file more than once for the same tenant. |
@@ -951,14 +935,13 @@ heavy.
 | `tenant_memberships` | `(tenant_id, role, status)` | Tenant admin user management and authorization checks. |
 | `file_objects` | `(tenant_id, object_purpose, created_at desc)` | Upload and generated artifact history. |
 | `file_objects` | `(tenant_id, checksum_sha256)` | Duplicate upload detection. |
-| `datasets` | `(tenant_id, dataset_type, status, updated_at desc)` | Dataset catalog filtering. |
-| `dataset_versions` | `(tenant_id, dataset_id, version_number desc)` | Dataset detail and version history. |
-| `dataset_versions` | `(tenant_id, quality_status, processing_status, created_at desc)` | Data readiness and operations views. |
+| `datasets` | `(tenant_id, dataset_type, updated_at desc)` | Dataset catalog filtering. |
+| `datasets` | `(tenant_id, quality_status, processing_status, created_at desc)` | Data readiness and operations views. |
 | `ingestion_sources` | `(tenant_id, source_type, status)` | Source management and scheduler scans. |
 | `ingestion_jobs` | `(tenant_id, status, created_at desc)` | Operations dashboards and worker polling. |
-| `ingestion_jobs` | `(tenant_id, dataset_version_id, created_at desc)` | Job history for one dataset version. |
+| `ingestion_jobs` | `(tenant_id, dataset_id, created_at desc)` | Job history for one dataset. |
 | `ingestion_errors` | `(tenant_id, ingestion_job_id, row_number)` | Validation error drilldown. |
-| `data_quality_reports` | `(tenant_id, dataset_version_id, created_at desc)` | Linking dataset versions to quality summaries. |
+| `data_quality_reports` | `(tenant_id, dataset_id, created_at desc)` | Linking datasets to quality summaries. |
 | `data_quality_reports` | `(tenant_id, status, created_at desc)` | Quality report review queues. |
 | `properties` | `(tenant_id, name)` | Property lists and search within a tenant. |
 | `properties` | `(tenant_id, city, province, country)` | Geographic filtering and dashboard grouping. |
@@ -966,7 +949,7 @@ heavy.
 | `meters` | `(tenant_id, property_id, service_type, status)` | Property detail pages and meter inventory screens. |
 | `meters` | `(tenant_id, utility_account_id)` | Account-to-meter lookups. |
 | `meter_readings` | `(tenant_id, meter_id, period_start_at desc)` | Time-series charts and recent-reading queries. |
-| `meter_readings` | `(tenant_id, dataset_version_id)` | Dataset lineage and deletion/archival review. |
+| `meter_readings` | `(tenant_id, dataset_id)` | Dataset lineage and deletion/archival review. |
 | `meter_readings` | `(tenant_id, quality_status, created_at desc)` | Data quality review queues. |
 | `programs` | `(tenant_id, status, name)` | Program selection and dashboard filters. |
 | `program_participants` | `(tenant_id, program_id, participation_status)` | Program enrollment and participant count queries. |
@@ -980,14 +963,14 @@ heavy.
 | `evaluation_runs` | `(tenant_id, program_id, status, created_at desc)` | Evaluation history and status dashboards. |
 | `evaluation_runs` | `(tenant_id, evaluation_type, status, created_at desc)` | Evaluation operations views. |
 | `evaluation_runs` | `(tenant_id, period_start, period_end)` | Comparing runs across reporting periods. |
-| `evaluation_inputs` | `(tenant_id, dataset_version_id)` | Finding runs affected by a dataset version. |
+| `evaluation_inputs` | `(tenant_id, dataset_id)` | Finding runs affected by a dataset. |
 | `evaluation_period_results` | `(tenant_id, evaluation_run_id, period_start)` | Savings-over-time charts. |
 | `evaluation_period_results` | `(tenant_id, evaluation_run_id)` | Evaluation summary loading. |
 | `evaluation_participant_results` | `(tenant_id, evaluation_run_id, estimated_savings)` | Outlier and negative-savings drilldown. |
 | `alert_rules` | `(tenant_id, is_active, rule_type)` | Rule execution scans. |
 | `alert_events` | `(tenant_id, status, severity, triggered_at desc)` | Alert inbox and dashboard badges. |
 | `anomalies` | `(tenant_id, status, severity, created_at desc)` | Anomaly review list. |
-| `anomalies` | `(tenant_id, dataset_version_id, created_at desc)` | Dataset anomaly drilldown. |
+| `anomalies` | `(tenant_id, dataset_id, created_at desc)` | Dataset anomaly drilldown. |
 | `anomalies` | `(tenant_id, evaluation_run_id, created_at desc)` | Evaluation anomaly drilldown. |
 | `anomalies` | `(tenant_id, property_id, period_start_at desc)` | Property anomaly history. |
 | `anomalies` | `(tenant_id, meter_id, period_start_at desc)` | Meter-level anomaly drilldown. |
@@ -995,7 +978,7 @@ heavy.
 | `reports` | `(tenant_id, is_shared, report_type)` | Shared report discovery. |
 | `report_runs` | `(tenant_id, report_id, created_at desc)` | Report execution history. |
 | `report_runs` | `(tenant_id, evaluation_run_id, created_at desc)` | Evidence package history for an evaluation. |
-| `assistant_documents` | `(tenant_id, approval_status, indexing_status, created_at desc)` | Assistant document review and indexing queues. |
+| `assistant_documents` | `(tenant_id, indexing_status, created_at desc)` | Assistant document indexing queues. |
 | `assistant_document_chunks` | `(tenant_id, assistant_document_id, chunk_index)` | Reconstructing source snippets in order. |
 | `assistant_document_chunks` | Vector index on `embedding` with tenant/document filters | Semantic retrieval for RAG. In PostgreSQL with pgvector, choose `hnsw` or `ivfflat` based on corpus size and latency goals. |
 | `assistant_document_flags` | `(tenant_id, status, severity, created_at desc)` | Content review queues. |
@@ -1025,9 +1008,9 @@ through a parent relationship. This is deliberate:
 Foreign keys between tenant-owned tables must be tenant-consistent. For example:
 
 - `meter_readings.meter_id` must refer to a meter with the same `tenant_id`.
-- `dataset_versions.file_object_id` must refer to a file object with the same
+- `datasets.file_object_id` must refer to a file object with the same
   `tenant_id`.
-- `evaluation_inputs.dataset_version_id` must refer to a dataset version with
+- `evaluation_inputs.dataset_id` must refer to a dataset with
   the same `tenant_id` as the evaluation run.
 - `assistant_retrievals.chunk_id` must refer to a chunk from the same tenant as
   the interaction.
@@ -1039,21 +1022,26 @@ RLS is the database backstop.
 ## Status Fields
 
 Status columns should use constrained values instead of arbitrary text once the
-schema is implemented. Candidate values:
+schema is implemented. A status column should belong to one state machine only:
+file objects track storage availability, ingestion jobs track execution,
+datasets track user-facing readiness, and assistant documents track
+indexing progress. Dataset and assistant document list screens may show derived
+labels, but those labels should come from these source fields instead of adding
+duplicate generic `status` columns.
+
+Candidate values:
 
 | Column family | Candidate values |
 | --- | --- |
 | Tenant, user, membership status | `active`, `invited`, `disabled`, `suspended`, `archived` |
-| File object status | `created`, `uploading`, `available`, `quarantined`, `deleted`, `failed` |
-| Dataset status | `active`, `deprecated`, `archived` |
-| Dataset version processing status | `uploaded`, `queued`, `validating`, `normalizing`, `ready`, `blocked`, `failed` |
+| File object storage status | `created`, `uploading`, `available`, `quarantined`, `deleted`, `failed` |
+| Dataset processing status | `uploaded`, `queued`, `validating`, `normalizing`, `ready`, `blocked`, `failed` |
 | Ingestion job status | `queued`, `running`, `completed`, `completed_with_errors`, `failed`, `cancelled` |
 | Data quality status | `pending`, `passed`, `warning`, `failed` |
 | Billing statement status | `draft`, `parsed`, `validated`, `needs_review`, `approved`, `archived` |
 | Evaluation run status | `queued`, `running`, `completed`, `completed_with_warnings`, `failed`, `cancelled` |
 | Evaluation approval status | `not_reviewed`, `approved`, `rejected`, `superseded` |
 | Alert and anomaly status | `open`, `acknowledged`, `resolved`, `dismissed` |
-| Assistant approval status | `pending_review`, `approved`, `rejected`, `revoked`, `deprecated` |
 | Assistant indexing status | `not_indexed`, `queued`, `indexing`, `indexed`, `failed` |
 | Assistant interaction status | `completed`, `refused`, `failed`, `timed_out` |
 | Report run status | `queued`, `running`, `completed`, `failed` |
@@ -1070,8 +1058,9 @@ schema is implemented. Candidate values:
   floating point surprises in reporting.
 - Store raw uploads, generated exports, and large artifacts in S3-compatible
   object storage. Store only metadata and lineage in `file_objects`.
-- Prefer linking source rows to `dataset_versions` so evidence packages can
-  identify exactly which upload produced a result.
+- Prefer linking source rows to `datasets` for MVP lineage. Add a separate
+  dataset-version table later when evidence packages need historical upload
+  selection or replacement comparison.
 - Keep `evaluation_runs.summary_json` for display summaries and flexible method
   metadata, but store dashboard-critical metrics in `evaluation_period_results`
   and drilldown-critical values in `evaluation_participant_results`.

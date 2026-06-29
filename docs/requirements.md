@@ -35,7 +35,7 @@ GridLens addresses this by providing a multi-tenant platform where organizations
    Non-technical users need to ask questions like “Why did savings drop in March?” or “What caveats should I include in this report?” without reading raw SQL, notebooks, or methodology PDFs.
 
 5. **LLM features need guardrails**  
-   A natural-language assistant is useful only if it is grounded in approved evidence, refuses unsupported claims, cites sources, handles ambiguity, and does not expose unauthorized context.
+   A natural-language assistant is useful only if it is grounded in tenant-scoped indexed evidence, refuses unsupported claims, cites sources, handles ambiguity, and does not expose unauthorized context.
 
 6. **Decision support requires auditability**  
    Users need a clear record of uploads, validation results, evaluation runs, model assumptions, report exports, and access-sensitive actions.
@@ -55,7 +55,7 @@ The product enables users to:
 - Validate and normalize operational data through repeatable workflows.
 - Run transparent evaluation jobs that estimate program impact.
 - Monitor data quality, anomalies, evaluation status, and usage trends.
-- Ask natural-language questions over approved documents and generated results.
+- Ask natural-language questions over indexed documents and generated results.
 - Export evidence packages that connect conclusions to source data and assumptions.
 - Operate safely in a multi-tenant environment with role-based access and audit trails.
 
@@ -93,7 +93,7 @@ This PRD may describe product capabilities such as “the system shall store a d
 - Help analysts onboard messy datasets with transparent validation feedback.
 - Allow administrators to manage tenant users, documents, and audit visibility.
 - Help auditors trace results from dashboard metric to source evidence.
-- Give users a grounded AI assistant that can answer questions using approved tenant-scoped context.
+- Give users a grounded AI assistant that can answer questions using indexed tenant-scoped context.
 
 ### 4.2 Product Objectives
 
@@ -142,7 +142,7 @@ A user interface for viewing program outcomes, data-quality indicators, anomalie
 
 ### 5.5 Evidence-Grounded AI Assistant
 
-A tenant-scoped assistant that answers questions using approved documents, data dictionaries, quality reports, evaluation summaries, and dashboard outputs.
+A tenant-scoped assistant that answers questions using indexed documents, data dictionaries, quality reports, evaluation summaries, and dashboard outputs.
 
 ### 5.6 Evidence and Reporting Center
 
@@ -224,7 +224,7 @@ A tenant-level user responsible for user access, tenant settings, documents, and
 
 - Invite and manage users.
 - Assign roles.
-- Upload approved methodology documents.
+- Upload methodology documents.
 - Review audit logs.
 - Monitor tenant usage.
 - Manage tenant configuration.
@@ -317,7 +317,7 @@ Potential extensions include:
 - Tenants represent organizations, utilities, municipalities, or program operators.
 - Each user belongs to one or more tenants depending on the final access model.
 - Program evaluations are intended to be transparent and explainable, not statistically perfect.
-- The assistant is not a source of truth by itself; it must rely on approved tenant context.
+- The assistant is not a source of truth by itself; it must rely on indexed tenant context.
 - Product requirements will be implemented through separate architecture, database, and API designs.
 - The initial build can start with a smaller slice, but the backlog should support a larger real-world-like product.
 
@@ -343,7 +343,7 @@ A generated report describing row counts, missing values, schema issues, duplica
 
 ### 10.5 Evaluation Run
 
-A tracked analytical job that estimates program impact for a selected program, time period, dataset version, and model configuration.
+A tracked analytical job that estimates program impact for a selected program, time period, dataset, and model configuration.
 
 ### 10.6 Savings Estimate
 
@@ -359,7 +359,7 @@ An exportable bundle that summarizes results, source datasets, methodology, assu
 
 ### 10.9 RAG Assistant
 
-A natural-language assistant that retrieves approved tenant-scoped context and generates grounded responses with citations.
+A natural-language assistant that retrieves indexed tenant-scoped context and generates grounded responses with citations.
 
 ---
 
@@ -614,7 +614,7 @@ Tenant isolation is necessary for trust. Without it, users cannot safely upload 
 #### STORY-01.06: Prevent Cross-Tenant AI Context Leakage
 
 **As a** tenant user,  
-**I want** AI responses to use only my tenant’s approved context,  
+**I want** AI responses to use only my tenant’s indexed context,  
 **so that** another organization’s information is never exposed.
 
 **Priority:** P1  
@@ -640,7 +640,7 @@ The product starts with data onboarding. If users cannot reliably upload and und
 ### Product Requirements
 
 - The product shall allow authorized users to upload supported dataset types.
-- Each dataset shall have metadata such as type, tenant, uploader, status, upload time, and version.
+- Each dataset shall have metadata such as type, tenant, uploader, upload time, current version, and deprecation state.
 - Raw uploads shall be preserved for traceability.
 - Users shall be able to review dataset history and processing status.
 
@@ -671,8 +671,8 @@ The product starts with data onboarding. If users cannot reliably upload and und
 **Acceptance criteria:**
 
 - The catalog lists datasets for the current tenant.
-- Each dataset shows type, status, upload date, uploader, and latest quality status.
-- The catalog supports filtering by dataset type and status.
+- Each dataset shows type, current version processing status, upload date, uploader, latest quality status, and deprecation state when applicable.
+- The catalog supports filtering by dataset type, current version processing status, latest quality status, and deprecation state.
 - The catalog does not show other tenants’ datasets.
 
 #### STORY-02.03: View Dataset Details
@@ -689,13 +689,13 @@ The product starts with data onboarding. If users cannot reliably upload and und
 - The detail view links to quality reports.
 - The detail view identifies related evaluation runs when available.
 
-#### STORY-02.04: Track Dataset Versions
+#### STORY-02.04: Track Dataset Version History
 
 **As an** analyst,  
 **I want** datasets to be versioned,  
 **so that** I can understand which version was used for a result.
 
-**Priority:** P1  
+**Priority:** Later / good to have  
 **Acceptance criteria:**
 
 - A replaced or re-uploaded dataset creates a distinguishable version.
@@ -1088,7 +1088,7 @@ Dashboards help non-technical and technical users monitor outcomes without manua
 - The dashboard shall show tenant-scoped metrics only.
 - The dashboard shall provide summary and drilldown views.
 - Metrics shall link to underlying evaluation runs and evidence where possible.
-- Dashboard filters shall support program, date range, dataset version, and segment where applicable.
+- Dashboard filters shall support program, date range, dataset, and segment where applicable.
 - Empty, loading, and error states shall be user-friendly.
 
 ### User Stories
@@ -1292,7 +1292,7 @@ Anomalies often explain surprising results. Users need a structured way to revie
 
 ### Epic Goal
 
-Provide a tenant-scoped assistant that answers questions using approved documents, data-quality reports, evaluation summaries, and other evidence.
+Provide a tenant-scoped assistant that answers questions using indexed documents, data-quality reports, evaluation summaries, and other evidence.
 
 ### Business Value
 
@@ -1313,7 +1313,7 @@ A trusted assistant can help users explore results, understand methodology, draf
 
 **As an** analyst,  
 **I want** to upload methodology documents and data dictionaries,  
-**so that** the assistant can answer questions using approved context.
+**so that** the assistant can answer questions using tenant-scoped context.
 
 **Priority:** P1  
 **Acceptance criteria:**
@@ -1332,7 +1332,7 @@ A trusted assistant can help users explore results, understand methodology, draf
 **Priority:** P1  
 **Acceptance criteria:**
 
-- The assistant retrieves relevant tenant-approved document context.
+- The assistant retrieves relevant indexed tenant document context.
 - The answer cites source documents.
 - The assistant states when evidence is insufficient.
 - The answer is written in plain language.
@@ -1346,7 +1346,7 @@ A trusted assistant can help users explore results, understand methodology, draf
 **Priority:** P1  
 **Acceptance criteria:**
 
-- The assistant can reference approved evaluation summaries and data-quality outputs.
+- The assistant can reference evaluation summaries and data-quality outputs.
 - The assistant cites the relevant run or report.
 - The assistant distinguishes calculated facts from interpretation.
 - The assistant does not answer from another tenant’s results.
@@ -1484,7 +1484,7 @@ Stakeholders often need to share results outside the platform. Reports should pr
 #### STORY-09.04: Generate AI-Assisted Narrative Draft
 
 **As a** program manager,  
-**I want** the assistant to draft a narrative summary from approved evidence,  
+**I want** the assistant to draft a narrative summary from indexed evidence,  
 **so that** I can prepare stakeholder updates faster.
 
 **Priority:** P2  
@@ -1638,7 +1638,7 @@ Tenant administrators need ownership of access and configuration without relying
 - Tenant admins shall be able to manage users within their tenant.
 - Tenant admins shall be able to assign product roles.
 - Tenant admins shall be able to review tenant settings.
-- Tenant admins shall be able to manage approved documents for the assistant.
+- Tenant admins shall be able to manage documents available to the assistant.
 - Administrative actions shall be audit logged.
 
 ### User Stories
@@ -1684,19 +1684,19 @@ Tenant administrators need ownership of access and configuration without relying
 - Historical audit records remain associated with the user.
 - Deactivation is audit logged.
 
-#### STORY-11.04: Manage Approved Documents
+#### STORY-11.04: Manage Assistant Documents
 
 **As a** tenant administrator,  
 **I want** to manage documents available to the assistant,  
-**so that** users receive answers from approved sources.
+**so that** users receive answers from indexed, tenant-scoped sources.
 
 **Priority:** P1  
 **Acceptance criteria:**
 
 - The admin can view uploaded documents.
-- The admin can mark documents as active, inactive, or deprecated.
+- The admin can view document indexing status and deprecate stale documents.
 - Deprecated documents are not used for new assistant answers unless explicitly allowed.
-- Document status changes are audit logged.
+- Document deprecation and reindexing actions are audit logged.
 
 #### STORY-11.05: Configure Tenant Preferences
 
@@ -2050,9 +2050,9 @@ More advanced models can make the platform more realistic and useful for deeper 
 
 - FR-006: The product shall allow authorized users to upload supported datasets.
 - FR-007: The product shall preserve dataset metadata.
-- FR-008: The product shall show dataset status.
+- FR-008: The product shall show current dataset-version processing and quality status.
 - FR-009: The product shall support dataset detail views.
-- FR-010: The product shall support dataset version awareness.
+- FR-010: The product shall preserve dataset lineage to uploaded files.
 
 ## 16.3 Data Quality
 
@@ -2092,7 +2092,7 @@ More advanced models can make the platform more realistic and useful for deeper 
 ## 16.7 AI Assistant
 
 - FR-034: The product shall allow authorized document upload for assistant context.
-- FR-035: The product shall answer tenant-scoped questions using approved context.
+- FR-035: The product shall answer tenant-scoped questions using indexed context.
 - FR-036: The product shall cite evidence for factual claims.
 - FR-037: The product shall refuse unsupported answers.
 - FR-038: The product shall track AI usage metadata.
@@ -2249,7 +2249,7 @@ Each quality report should include:
 
 - Dataset name.
 - Dataset type.
-- Dataset version.
+- Source file.
 - Tenant.
 - Upload timestamp.
 - Total rows.
@@ -2314,7 +2314,7 @@ The first complete product slice is done when:
 6. A program evaluation can be created and completed.
 7. Evaluation results are visible in a dashboard.
 8. Data-quality issues and anomalies are visible.
-9. The assistant can answer questions using tenant-approved documents or generated reports.
+9. The assistant can answer questions using indexed tenant documents or generated reports.
 10. The assistant cites sources or refuses unsupported questions.
 11. An evaluation summary can be exported.
 12. Important actions are audit logged.
@@ -2694,7 +2694,7 @@ For local development:
 | Evaluation | Program savings and impact analysis. | P0 |
 | Dashboard | Metrics and trends. | P0 |
 | Anomalies | Issue detection and review. | P1 |
-| Assistant | Grounded Q&A over approved evidence. | P1 |
+| Assistant | Grounded Q&A over indexed evidence. | P1 |
 | Reports | Evaluation summaries and evidence packages. | P1 |
 | Audit | Activity and security traceability. | P1 |
 | Administration | Users, roles, settings, documents. | P1 |
@@ -2756,7 +2756,6 @@ For local development:
 
 ## P1 Backlog
 
-- Dataset versioning.
 - Dataset deprecation.
 - Quality score.
 - Invalid row quarantine.
@@ -2774,12 +2773,13 @@ For local development:
 - Evidence package export.
 - Audit log review.
 - Tenant user management.
-- Approved document management.
+- Assistant document deprecation.
 - Security and privacy documentation.
 - Demo script.
 
 ## P2 Backlog
 
+- Dataset version history.
 - Schema drift detection.
 - Evaluation approval workflow.
 - Anomaly status management.

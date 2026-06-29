@@ -120,7 +120,7 @@ Bedrock is a first-class dependency for AI workloads:
 * LLM calls for grounded assistant responses, refusals, summaries, and
   later AI-assisted report drafting.
 
-AI requests must be tenant-scoped, grounded in approved evidence, observable for
+AI requests must be tenant-scoped, grounded in indexed evidence, observable for
 usage and latency, and designed to avoid cross-tenant retrieval or citation.
 
 ## Local Development Architecture
@@ -161,7 +161,7 @@ It should not rely on frontend filtering to enforce tenant access.
 
 ### Data Operations
 
-Owns file registration, dataset catalog records, dataset versions, ingestion
+Owns file registration, dataset catalog records, ingestion
 jobs, validation, quality reports, billing data, rate data, and normalized
 operational data such as properties, accounts, meters, readings, weather,
 programs, and participants.
@@ -171,13 +171,13 @@ evaluation, dashboards, reports, and assistant context.
 
 ### Assistant
 
-Owns assistant source documents, approval and deprecation status, document
-parsing, chunking, embeddings, retrieval, chat sessions, citations, refusals,
-assistant interactions, user feedback, and assistant evaluation cases.
+Owns assistant source documents, deprecation state, document parsing, chunking,
+embeddings, retrieval, chat sessions, citations, refusals, assistant
+interactions, user feedback, and assistant evaluation cases.
 
-The assistant should treat approved tenant evidence as the grounding source.
-It should not answer from unapproved documents, another tenant's data, or
-unsupported assumptions.
+The assistant should treat indexed tenant evidence as the grounding source. It
+should not answer from non-indexed documents, deprecated documents, another
+tenant's data, or unsupported assumptions.
 
 ### Program Evaluation
 
@@ -256,27 +256,27 @@ processing, validation, quality reporting, normalized data storage, and status
 updates visible to users.
 
 This flow should include invalid-file handling, blocking validation failures,
-retryable system failures, and lineage from raw file to dataset version.
+retryable system failures, and lineage from raw file to dataset.
 
 ### Assistant Ingestion
 
-Shows how approved assistant source material enters the system: upload,
-document registration, review or approval state, parsing, chunking, embedding
-generation, vector storage, indexing status, and document deprecation or
-reindexing.
+Shows how assistant source material enters the system: upload, document
+registration, parsing, chunking, embedding generation, vector storage,
+indexing status, and document deprecation or reindexing.
 
 This flow should distinguish document storage from dataset ingestion because
-assistant context has different approval, citation, and prompt-injection risks.
+assistant context has different citation and prompt-injection risks.
 
 ### Assistant Chat
 
 Shows how a user message becomes a grounded answer or refusal: session lookup,
-authorization, tenant-scoped retrieval, approved-source filtering, prompt
+authorization, tenant-scoped retrieval, indexed-source filtering, prompt
 assembly, Bedrock call, citation attachment, response persistence, usage
 metadata, and user-facing answer.
 
 This flow should explicitly show refusal behavior when evidence is missing,
-retrieval returns unapproved context, or the user asks for unauthorized data.
+retrieval returns non-indexed or deprecated context, or the user asks for
+unauthorized data.
 
 ## Deferred Flow Diagrams
 
@@ -293,7 +293,7 @@ useful.
   are built.
 
 Current diagrams should still leave clear hooks for these future flows. For
-example, dataset ingestion should produce dataset versions, quality reports, and
+example, dataset ingestion should produce datasets, quality reports, and
 lineage records that program evaluation and reporting can consume later.
 
 ## Cross-Cutting Requirements
@@ -316,7 +316,7 @@ near workflow entry points and should be tested for cross-tenant denial cases.
 ### Traceability
 
 Important outputs should link back to their source inputs and workflow state.
-At minimum, dataset versions, quality reports, assistant answers, evaluation
+At minimum, datasets, quality reports, assistant answers, evaluation
 runs, dashboards, and generated artifacts should preserve enough metadata to
 explain how they were produced.
 

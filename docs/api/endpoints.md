@@ -38,7 +38,7 @@ Tenant roles:
   assistant questions.
 - `Auditor`: can review lineage, evidence packages, report outputs, and audit
   activity.
-- `Viewer`: can read approved tenant resources but cannot mutate product state.
+- `Viewer`: can read tenant resources permitted by role but cannot mutate product state.
 
 Platform roles:
 
@@ -102,11 +102,8 @@ Permission shorthand:
 | --- | --- | --- | --- |
 | `GET` | `/api/v1/tenants/{tenant_id}/datasets` | `Any tenant member` | List tenant datasets with catalog metadata, type, processing status, and latest quality status. |
 | `POST` | `/api/v1/tenants/{tenant_id}/datasets` | `Analyst` | Register a dataset from an uploaded file and start the initial processing workflow when appropriate. |
-| `GET` | `/api/v1/tenants/{tenant_id}/datasets/{dataset_id}` | `Any tenant member` | Return dataset details, current version, status, lineage summary, and related activity links. |
-| `PATCH` | `/api/v1/tenants/{tenant_id}/datasets/{dataset_id}` | `Tenant Admin` or `Analyst` | Update dataset metadata such as name, description, status, or deprecation state. |
-| `GET` | `/api/v1/tenants/{tenant_id}/datasets/{dataset_id}/versions` | `Any tenant member` | List all versions for a dataset in newest-first order. |
-| `POST` | `/api/v1/tenants/{tenant_id}/datasets/{dataset_id}/versions` | `Analyst` | Register a replacement or additional dataset version from an uploaded file. |
-| `GET` | `/api/v1/tenants/{tenant_id}/datasets/{dataset_id}/versions/{version_id}` | `Any tenant member` | Return a dataset version's processing status, quality status, source file, and readiness details. |
+| `GET` | `/api/v1/tenants/{tenant_id}/datasets/{dataset_id}` | `Any tenant member` | Return dataset details, current readiness, deprecation state, lineage summary, and related activity links. |
+| `PATCH` | `/api/v1/tenants/{tenant_id}/datasets/{dataset_id}` | `Tenant Admin` or `Analyst` | Update dataset metadata such as name, description, or deprecation state. |
 | `POST` | `/api/v1/tenants/{tenant_id}/datasets/{dataset_id}/deprecate` | `Tenant Admin` | Mark a dataset as deprecated so it is not selected for new evaluations by default. |
 | `POST` | `/api/v1/tenants/{tenant_id}/datasets/{dataset_id}/restore` | `Tenant Admin` | Restore a deprecated dataset when an authorized user decides it may be used again. |
 
@@ -119,7 +116,7 @@ Permission shorthand:
 | `GET` | `/api/v1/tenants/{tenant_id}/ingestion-sources/{source_id}` | `Tenant Admin` or `Analyst` | Return one ingestion source and its operational status. |
 | `PATCH` | `/api/v1/tenants/{tenant_id}/ingestion-sources/{source_id}` | `Tenant Admin` | Update non-secret ingestion source settings or status. |
 | `GET` | `/api/v1/tenants/{tenant_id}/ingestion-jobs` | `Tenant Admin`, `Analyst`, or `Auditor` | List processing jobs with filters for status, dataset, source, date range, and failure category. |
-| `GET` | `/api/v1/tenants/{tenant_id}/ingestion-jobs/{job_id}` | `Tenant Admin`, `Analyst`, or `Auditor` | Return job progress, counters, timing, failure reason, and links to related dataset versions or quality reports. |
+| `GET` | `/api/v1/tenants/{tenant_id}/ingestion-jobs/{job_id}` | `Tenant Admin`, `Analyst`, or `Auditor` | Return job progress, counters, timing, failure reason, and links to related datasets or quality reports. |
 | `POST` | `/api/v1/tenants/{tenant_id}/ingestion-jobs/{job_id}/retry` | `Analyst` | Retry an eligible failed job with a new attempt number and audit trail. |
 | `GET` | `/api/v1/tenants/{tenant_id}/ingestion-jobs/{job_id}/errors` | `Tenant Admin`, `Analyst`, or `Auditor` | List row-level or record-level errors for a validation or ingestion job. |
 
@@ -130,7 +127,7 @@ Permission shorthand:
 | `GET` | `/api/v1/tenants/{tenant_id}/quality-reports` | `Any tenant member` | List data-quality reports across datasets for review queues and dashboard summaries. |
 | `GET` | `/api/v1/tenants/{tenant_id}/quality-reports/{report_id}` | `Any tenant member` | Return a quality report summary, severity counts, score, and issue categories. |
 | `GET` | `/api/v1/tenants/{tenant_id}/quality-reports/{report_id}/issues` | `Tenant Admin`, `Analyst`, or `Auditor` | List blocking, warning, and informational quality issues from a report. |
-| `GET` | `/api/v1/tenants/{tenant_id}/datasets/{dataset_id}/versions/{version_id}/quality-report` | `Any tenant member` | Return the latest quality report for a specific dataset version. |
+| `GET` | `/api/v1/tenants/{tenant_id}/datasets/{dataset_id}/quality-report` | `Any tenant member` | Return the latest quality report for a dataset. |
 
 ## Utility Assets and Operational Data
 
@@ -184,7 +181,7 @@ read-oriented in the initial API because uploads and transformations own writes.
 | `POST` | `/api/v1/tenants/{tenant_id}/evaluations/{evaluation_id}/cancel` | `Analyst` | Cancel a queued or running evaluation when cancellation is still possible. |
 | `POST` | `/api/v1/tenants/{tenant_id}/evaluations/{evaluation_id}/approve` | `Tenant Admin` | Mark a completed evaluation as approved for reporting. |
 | `POST` | `/api/v1/tenants/{tenant_id}/evaluations/{evaluation_id}/unapprove` | `Tenant Admin` | Remove reporting approval from an evaluation when permitted. |
-| `GET` | `/api/v1/tenants/{tenant_id}/evaluations/{evaluation_id}/inputs` | `Any tenant member` | List exact dataset versions used by the evaluation. |
+| `GET` | `/api/v1/tenants/{tenant_id}/evaluations/{evaluation_id}/inputs` | `Any tenant member` | List datasets used by the evaluation. |
 | `GET` | `/api/v1/tenants/{tenant_id}/evaluations/{evaluation_id}/period-results` | `Any tenant member` | Return aggregate period or segment results for savings-over-time charts. |
 | `GET` | `/api/v1/tenants/{tenant_id}/evaluations/{evaluation_id}/participant-results` | `Tenant Admin`, `Analyst`, or `Auditor` | Return participant-level or site-level results for authorized analyst drilldown. |
 | `GET` | `/api/v1/tenants/{tenant_id}/evaluations/{evaluation_id}/anomalies` | `Any tenant member` | List anomalies linked to the evaluation. |
@@ -239,13 +236,12 @@ evidence records, not hidden calculations detached from lineage.
 
 | Method | Path | Access | Purpose |
 | --- | --- | --- | --- |
-| `GET` | `/api/v1/tenants/{tenant_id}/assistant/documents` | `Tenant Admin` or `Analyst` | List assistant source documents with approval and indexing status. |
-| `POST` | `/api/v1/tenants/{tenant_id}/assistant/documents` | `Tenant Admin` | Register an uploaded document as assistant source material and start review or indexing workflow. |
-| `GET` | `/api/v1/tenants/{tenant_id}/assistant/documents/{document_id}` | `Tenant Admin` or `Analyst` | Return assistant document metadata, approval status, indexing status, and source file links. |
-| `PATCH` | `/api/v1/tenants/{tenant_id}/assistant/documents/{document_id}` | `Tenant Admin` | Update document metadata, lifecycle status, or review notes. |
-| `POST` | `/api/v1/tenants/{tenant_id}/assistant/documents/{document_id}/approve` | `Tenant Admin` | Approve a document for tenant-scoped assistant retrieval. |
+| `GET` | `/api/v1/tenants/{tenant_id}/assistant/documents` | `Tenant Admin` or `Analyst` | List assistant source documents with indexing status and deprecation state. |
+| `POST` | `/api/v1/tenants/{tenant_id}/assistant/documents` | `Tenant Admin` | Register an uploaded document as assistant source material and start indexing workflow. |
+| `GET` | `/api/v1/tenants/{tenant_id}/assistant/documents/{document_id}` | `Tenant Admin` or `Analyst` | Return assistant document metadata, indexing status, deprecation state, and source file links. |
+| `PATCH` | `/api/v1/tenants/{tenant_id}/assistant/documents/{document_id}` | `Tenant Admin` | Update document metadata or review notes. Deprecation and indexing changes use explicit actions. |
 | `POST` | `/api/v1/tenants/{tenant_id}/assistant/documents/{document_id}/deprecate` | `Tenant Admin` | Deprecate a document so it is not used for new assistant answers by default. |
-| `POST` | `/api/v1/tenants/{tenant_id}/assistant/documents/{document_id}/reindex` | `Tenant Admin` | Rebuild assistant document chunks and embeddings for an approved or changed document. |
+| `POST` | `/api/v1/tenants/{tenant_id}/assistant/documents/{document_id}/reindex` | `Tenant Admin` | Rebuild assistant document chunks and embeddings for an indexed or changed document. |
 | `GET` | `/api/v1/tenants/{tenant_id}/assistant/documents/{document_id}/chunks` | `Tenant Admin` or `Analyst` | List indexed chunks for document inspection and citation debugging. |
 | `GET` | `/api/v1/tenants/{tenant_id}/assistant/document-flags` | `Tenant Admin` or `Analyst` | List source-content flags for unsafe, stale, sensitive, or low-quality assistant material. |
 | `POST` | `/api/v1/tenants/{tenant_id}/assistant/document-flags/{flag_id}/resolve` | `Tenant Admin` | Resolve a document review flag after action or acceptance. |
@@ -256,7 +252,7 @@ evidence records, not hidden calculations detached from lineage.
 | --- | --- | --- | --- |
 | `GET` | `/api/v1/tenants/{tenant_id}/assistant/sessions` | `Any tenant member` | List the current user's assistant sessions for the tenant. Tenant admins may inspect sessions only if a governance workflow allows it. |
 | `POST` | `/api/v1/tenants/{tenant_id}/assistant/sessions` | `Any tenant member` | Create a new assistant conversation session. |
-| `GET` | `/api/v1/tenants/{tenant_id}/assistant/sessions/{session_id}` | `Owner` or `Tenant Admin` | Return session metadata and message history. Tenant admin access should be limited to approved governance review. |
+| `GET` | `/api/v1/tenants/{tenant_id}/assistant/sessions/{session_id}` | `Owner` or `Tenant Admin` | Return session metadata and message history. Tenant admin access should be limited to authorized governance review. |
 | `POST` | `/api/v1/tenants/{tenant_id}/assistant/sessions/{session_id}/messages` | `Owner` | Submit a user message and create a grounded assistant response or refusal. |
 | `GET` | `/api/v1/tenants/{tenant_id}/assistant/messages/{message_id}/sources` | `Owner`, `Tenant Admin`, or `Auditor` | Return citations and evidence sources attached to an assistant answer. |
 | `GET` | `/api/v1/tenants/{tenant_id}/assistant/interactions/{interaction_id}` | `Owner`, `Tenant Admin`, or `Auditor` | Return model-call metadata, refusal reason, retrieval summary, latency, and usage details for governance. |
