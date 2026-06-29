@@ -5,10 +5,20 @@ services:
     environment:
       APP_ENV: development
       DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
-    command: ["python", "-m", "gridlens_api_gateway.main"]
+    command:
+      - uvicorn
+      - gridlens_api_gateway.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --reload
     volumes:
       - ./services/api-gateway/src:/app/src:ro
       - ${HOME}/.aws:/home/app/.aws:ro
+    restart: unless-stopped
+
+  kong:
     restart: unless-stopped
 
   worker:

@@ -80,7 +80,16 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertNotIn("devtools", worker_dockerfile)
         self.assertNotIn("/app/devtools/reload_debug.py", dev_compose)
         self.assertIn("gridlens_api_gateway.main", dev_compose)
+        self.assertIn("gridlens_api_gateway.main:app", dev_compose)
         self.assertIn("gridlens_local_runtime_worker.main", dev_compose)
+
+    def test_makefile_exposes_gateway_run_commands(self) -> None:
+        makefile = (ROOT / "Makefile").read_text()
+
+        self.assertIn("dev-gateway:", makefile)
+        self.assertIn("up --build api kong", makefile)
+        self.assertIn("run-api:", makefile)
+        self.assertIn("uvicorn gridlens_api_gateway.main:app", makefile)
 
     def test_docker_builds_use_root_pyproject_without_local_artifacts(self) -> None:
         compose = (ROOT / "docker-compose.yml").read_text()

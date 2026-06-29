@@ -7,7 +7,7 @@ COMPOSE_BASE := -f docker-compose.yml
 COMPOSE_DEV := -f docker-compose.yml -f docker-compose.dev.yml
 PROJECT_NAME ?= gridlens-local
 
-.PHONY: setup dev down reset-local-state test test-backend test-frontend test-contracts test-libs test-local-db lint format migrate seed run
+.PHONY: setup dev dev-gateway down reset-local-state test test-backend test-frontend test-contracts test-libs test-local-db lint format migrate seed run run-api
 
 setup:
 	@printf '%s\n' 'GridLens local setup'
@@ -28,7 +28,13 @@ setup:
 dev:
 	$(COMPOSE) $(COMPOSE_DEV) up --build
 
+dev-gateway:
+	$(COMPOSE) $(COMPOSE_DEV) up --build api kong
+
 run: dev
+
+run-api:
+	PYTHONPATH=services/api-gateway/src $(PYTHON) -m uvicorn gridlens_api_gateway.main:app --host 127.0.0.1 --port $${API_PORT:-8000}
 
 down:
 	$(COMPOSE) $(COMPOSE_BASE) down
