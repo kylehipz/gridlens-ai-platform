@@ -1,0 +1,4 @@
+interface:
+  display_name: "PR Review"
+  short_description: "Role-based PR review handovers"
+  default_prompt: "Use $pr-review to review the current PR through backend, security, database, and DevOps roles."

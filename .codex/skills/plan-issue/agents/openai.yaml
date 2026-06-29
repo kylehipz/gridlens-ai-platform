@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan Issue"
+  short_description: "Plan GitHub issues into handovers"
+  default_prompt: "Use $plan-issue to fetch the current GitHub issue and write a checkpointed handover plan."

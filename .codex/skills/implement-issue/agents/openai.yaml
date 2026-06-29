@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implement Issue"
+  short_description: "Implement handover checkpoints"
+  default_prompt: "Use $implement-issue to execute the matching .handover issue plan checkpoint by checkpoint."
