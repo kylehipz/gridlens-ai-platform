@@ -25,7 +25,7 @@ PSQL_SUPERUSER = docker exec -e PGPASSWORD="$(POSTGRES_SUPERUSER_PASSWORD)" "$(P
 PSQL_APP = docker exec -e PGPASSWORD="$(POSTGRES_PASSWORD)" "$(POSTGRES_CONTAINER_ID)" psql -U "$(POSTGRES_USER)" -d "$(POSTGRES_DB)"
 endif
 
-.PHONY: setup dev dev-gateway down reset-local-state test test-backend test-frontend test-contracts test-libs test-local-db bootstrap-live-db test-live-db lint typecheck format migrate seed run run-identity-tenant
+.PHONY: setup dev dev-gateway down reset-local-state test test-backend test-frontend test-contracts test-libs test-local-db bootstrap-live-db test-live-db lint typecheck format migrate seed run run-identity-tenant run-frontend
 
 setup:
 	@printf '%s\n' 'GridLens local setup'
@@ -73,11 +73,10 @@ test-libs:
 	$(PYTEST) libs
 
 test-frontend:
-	@if test -d frontend; then \
-		printf '%s\n' 'Frontend directory exists, but no frontend test runner is configured yet.'; \
-	else \
-		printf '%s\n' 'No frontend/ directory yet; frontend tests are pending implementation work.'; \
-	fi
+	cd frontend && npm test -- --run
+
+run-frontend:
+	cd frontend && npm run dev
 
 test-local-db:
 	@printf '%s\n' 'Checking local PostgreSQL, app schema, and PGVector...'

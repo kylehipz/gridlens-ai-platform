@@ -1,0 +1,93 @@
+:root {
+  color-scheme: light;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #0f1a2b;
+  background: #f3f6fa;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --color-brand: #4f46e5;
+  --color-brand-strong: #4338ca;
+  --color-ink: #0f1a2b;
+  --color-muted: #5a6878;
+  --color-border: #d7dee7;
+  --color-panel: #ffffff;
+  --color-shell: #0e1726;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+}
+
+.auth-panel {
+  width: min(100%, 28rem);
+  padding: var(--space-8);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 18px 45px rgb(15 26 43 / 0.08);
+}
+
+.brand-mark {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.22rem;
+  padding: 0.4rem;
+  background: var(--color-brand);
+  border-radius: var(--radius-sm);
+}
+
+.brand-mark span {
+  border: 1.5px solid #ffffff;
+  border-radius: 2px;
+}
+
+.eyebrow {
+  margin: var(--space-4) 0 var(--space-2);
+  color: var(--color-brand-strong);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  line-height: 1.1;
+}
+
+p {
+  color: var(--color-muted);
+}
