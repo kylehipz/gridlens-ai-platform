@@ -1,45 +1,46 @@
-import re
-from contextvars import ContextVar
+import json
+import logging
+from datetime import UTC, datetime
 from typing import Any
 
-_context: ContextVar[dict[str, Any] | None] = ContextVar("gridlens_log_context", default=None)
+from .context import bind_context, clear_context, current_context_fields, reset_context
+from .redaction import redact_field, redact_value
 
 
-def redact_value(value: Any) -> Any:
-    if not isinstance(value, str):
-        return value
-    if re.fullmatch(r"\d{10,}", value):
-        return f"{value[:2]}***{value[-2:]}"
-    if "X-Amz-Signature=" in value:
-        return "[redacted-url]"
-    if re.search(r"Bearer\s+\S+", value, re.IGNORECASE):
-        return "[redacted]"
-    if re.search(r"(secret|token|password|api[_-]?key|credential)[=:]", value, re.IGNORECASE):
-        return "[redacted]"
-    return value
+class JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        payload = structured_record(
+            record.getMessage(),
+            level=record.levelname.lower(),
+            logger=record.name,
+            timestamp=datetime.fromtimestamp(record.created, UTC).isoformat(),
+        )
+        if record.exc_info and record.exc_info[0]:
+            payload["exception_type"] = record.exc_info[0].__name__
+        return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
-def _redact_field(key: str, value: Any) -> Any:
-    normalized = "".join(character for character in key.lower() if character.isalnum())
-    sensitive_parts = ("apikey", "authorization", "credential", "password", "secret", "signature", "token")
-    if any(part in normalized for part in sensitive_parts):
-        return "***"
-    return redact_value(value)
-
-
-def _current_context() -> dict[str, Any]:
-    return dict(_context.get() or {})
-
-
-def bind_context(**fields: Any) -> None:
-    safe = {key: _redact_field(key, value) for key, value in fields.items()}
-    current = _current_context()
-    current.update(safe)
-    _context.set(current)
+def configure_json_logging(level: int = logging.INFO) -> None:
+    handler = logging.StreamHandler()
+    handler.setFormatter(JsonFormatter())
+    root = logging.getLogger()
+    root.handlers = [handler]
+    root.setLevel(level)
 
 
 def structured_record(message: str, **fields: Any) -> dict[str, Any]:
-    record = _current_context()
-    record.update({key: _redact_field(key, value) for key, value in fields.items()})
+    record = current_context_fields()
+    record.update({key: redact_field(key, value) for key, value in fields.items()})
     record["message"] = message
     return record
+
+
+__all__ = [
+    "JsonFormatter",
+    "bind_context",
+    "clear_context",
+    "configure_json_logging",
+    "redact_value",
+    "reset_context",
+    "structured_record",
+]
