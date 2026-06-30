@@ -1,11 +1,20 @@
 import unittest
 
-from gridlens_auth import DevTokenValidator, JwksTokenValidator, PermissionDenied, require_role
+from gridlens_auth import (
+    AuthenticationError,
+    AuthMode,
+    AuthSettings,
+    JwksTokenValidator,
+    PermissionDenied,
+    TestTokenValidator,
+    bearer_token,
+    require_role,
+)
 from gridlens_contracts.roles import PlatformRole, Role
 from gridlens_contracts.tenant_context import ActorContext, TenantContext
 
 
-class FakeKeyProvider:
+class FakeJwksVerifier:
     def __init__(self):
         self.calls = []
 
@@ -23,15 +32,41 @@ class FakeKeyProvider:
 
 
 class AuthTests(unittest.TestCase):
-    def test_dev_token_attaches_principal_tenant_context_and_role(self):
-        principal = DevTokenValidator().validate(
+    def test_test_token_attaches_principal_tenant_context_and_role_in_test_mode(self):
+        principal = TestTokenValidator(settings=AuthSettings.test()).validate(
             "dev:user_a:tenant_a:Analyst", request_id="req_1", correlation_id="corr_1"
         )
         self.assertEqual("user_a", principal.subject)
+        self.assertEqual("user_a@example.test", principal.email)
         self.assertIsNotNone(principal.tenant_context)
         assert principal.tenant_context is not None
+        self.assertEqual("tenant_a", principal.tenant_context.tenant_id)
+        self.assertEqual("user_a", principal.tenant_context.actor.actor_id)
         self.assertIn(Role.ANALYST, principal.tenant_context.roles)
+        self.assertEqual("req_1", principal.tenant_context.request_id)
+        self.assertEqual("corr_1", principal.tenant_context.correlation_id)
         require_role(principal.tenant_context, {Role.ANALYST})
+
+    def test_test_token_is_rejected_outside_test_mode(self):
+        settings = AuthSettings(mode=AuthMode.COGNITO, issuer="issuer", audience="aud", jwks_url="jwks")
+        with self.assertRaises(AuthenticationError):
+            TestTokenValidator(settings=settings).validate(
+                "dev:user_a:tenant_a:Analyst", request_id="req", correlation_id="corr"
+            )
+
+    def test_test_token_rejects_malformed_or_unknown_role(self):
+        validator = TestTokenValidator(settings=AuthSettings.test())
+        for token in ("", "Bearer jwt", "dev::tenant_a:Analyst", "dev:user_a:tenant_a:Owner"):
+            with self.subTest(token=token):
+                with self.assertRaises(AuthenticationError):
+                    validator.validate(token, request_id="req", correlation_id="corr")
+
+    def test_bearer_token_maps_missing_or_invalid_credentials_to_auth_failure(self):
+        self.assertEqual("jwt", bearer_token("Bearer jwt"))
+        for header in (None, "", "Basic abc", "Bearer "):
+            with self.subTest(header=header):
+                with self.assertRaises(AuthenticationError):
+                    bearer_token(header)
 
     def test_permission_denies_missing_inactive_and_wrong_role(self):
         with self.assertRaises(PermissionDenied):
@@ -58,14 +93,34 @@ class AuthTests(unittest.TestCase):
             require_role(active_viewer, {Role.ANALYST, Role.TENANT_ADMIN})
 
     def test_jwks_ready_validator_uses_injected_provider_without_network(self):
-        provider = FakeKeyProvider()
-        principal = JwksTokenValidator(
-            issuer="https://issuer.example.test", audience="gridlens", key_provider=provider
-        ).validate("jwt", request_id="req", correlation_id="corr")
-        self.assertEqual([("jwt", "https://issuer.example.test", "gridlens")], provider.calls)
+        verifier = FakeJwksVerifier()
+        settings = AuthSettings.cognito(
+            issuer="https://issuer.example.test",
+            audience="gridlens",
+            jwks_url="https://issuer.example.test/.well-known/jwks.json",
+        )
+        principal = JwksTokenValidator.from_settings(settings, verifier=verifier).validate(
+            "jwt", request_id="req", correlation_id="corr"
+        )
+        self.assertEqual([("jwt", "https://issuer.example.test", "gridlens")], verifier.calls)
         self.assertIsNotNone(principal.tenant_context)
         assert principal.tenant_context is not None
+        self.assertEqual("user_jwks", principal.subject)
+        self.assertEqual("tenant_a", principal.tenant_context.tenant_id)
+        self.assertIn(Role.TENANT_ADMIN, principal.tenant_context.roles)
+        self.assertEqual("req", principal.tenant_context.request_id)
+        self.assertEqual("corr", principal.tenant_context.correlation_id)
         self.assertIn(PlatformRole.PLATFORM_OPERATOR, principal.tenant_context.actor.platform_roles)
+
+    def test_jwks_validator_rejects_bad_claim_shape(self):
+        class BadVerifier:
+            def verify(self, token, *, issuer, audience):
+                return {"tenant_roles": ["Owner"]}
+
+        with self.assertRaises(AuthenticationError):
+            JwksTokenValidator(
+                issuer="https://issuer.example.test", audience="gridlens", verifier=BadVerifier()
+            ).validate("jwt", request_id="req", correlation_id="corr")
 
 
 if __name__ == "__main__":
