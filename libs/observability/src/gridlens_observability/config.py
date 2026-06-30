@@ -30,7 +30,7 @@ def settings_from_env(environ: dict[str, str] | None = None) -> ObservabilitySet
         log_exporter=env.get("LOG_EXPORTER", defaults.log_exporter),
         metrics_exporter=env.get("METRICS_EXPORTER", defaults.metrics_exporter),
         traces_exporter=env.get("TRACES_EXPORTER", defaults.traces_exporter),
-        otlp_endpoint=env.get("OTEL_EXPORTER_OTLP_ENDPOINT"),
+        otlp_endpoint=env.get("OTEL_EXPORTER_OTLP_ENDPOINT", defaults.otlp_endpoint),
         service_name=env.get("OTEL_SERVICE_NAME", "gridlens"),
         smoke_routes_enabled=_enabled(
             env.get("OBSERVABILITY_SMOKE_ROUTES_ENABLED"),

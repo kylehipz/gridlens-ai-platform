@@ -1,7 +1,9 @@
+import json
 from dataclasses import dataclass, field
 from threading import Lock
-from typing import Protocol
-from urllib.parse import quote
+from time import time_ns
+from typing import Any, Protocol
+from urllib import request
 
 from .context import current_context_fields
 from .redaction import safe_attributes
@@ -46,35 +48,28 @@ class InMemoryMetricExporter:
             self._records.clear()
 
 
-class PrometheusMetricExporter(InMemoryMetricExporter):
-    def render(self) -> str:
-        counters: dict[tuple[str, tuple[tuple[str, str], ...]], float] = {}
-        histograms: dict[tuple[str, tuple[tuple[str, str], ...]], tuple[int, float]] = {}
-        gauges: dict[tuple[str, tuple[tuple[str, str], ...]], float] = {}
+class OtlpMetricExporter:
+    def __init__(self, endpoint: str, *, service_name: str) -> None:
+        self.endpoint = endpoint.rstrip("/")
+        self.service_name = service_name
 
-        for record in self.records():
-            key = (_prometheus_name(record.name), _labels(record.attributes))
-            value = float(record.value)
-            if record.kind == "counter":
-                counters[key] = counters.get(key, 0.0) + value
-            elif record.kind == "histogram":
-                count, total = histograms.get(key, (0, 0.0))
-                histograms[key] = (count + 1, total + value)
-            elif record.kind == "gauge":
-                gauges[key] = value
-
-        lines = [
-            "# HELP gridlens_metrics GridLens application metrics.",
-            "# TYPE gridlens_metrics untyped",
-        ]
-        for (name, labels), value in sorted(counters.items()):
-            lines.append(f"{name}_total{_label_text(labels)} {value:g}")
-        for (name, labels), (count, total) in sorted(histograms.items()):
-            lines.append(f"{name}_count{_label_text(labels)} {count}")
-            lines.append(f"{name}_sum{_label_text(labels)} {total:g}")
-        for (name, labels), value in sorted(gauges.items()):
-            lines.append(f"{name}{_label_text(labels)} {value:g}")
-        return "\n".join(lines) + "\n"
+    def emit(self, record: MetricRecord) -> None:
+        payload = {
+            "resourceMetrics": [
+                {
+                    "resource": {
+                        "attributes": [_string_attribute("service.name", self.service_name)]
+                    },
+                    "scopeMetrics": [
+                        {
+                            "scope": {"name": "gridlens_observability"},
+                            "metrics": [_metric_payload(record)],
+                        }
+                    ],
+                }
+            ]
+        }
+        _post_json(f"{self.endpoint}/v1/metrics", payload)
 
 
 _metric_exporter: MetricExporter = NoopMetricExporter()
@@ -83,12 +78,6 @@ _metric_exporter: MetricExporter = NoopMetricExporter()
 def set_metric_exporter(exporter: MetricExporter) -> None:
     global _metric_exporter
     _metric_exporter = exporter
-
-
-def prometheus_metrics_text() -> str:
-    if isinstance(_metric_exporter, PrometheusMetricExporter):
-        return _metric_exporter.render()
-    return "# HELP gridlens_metrics GridLens application metrics.\n# TYPE gridlens_metrics untyped\n"
 
 
 def counter(name: str, value: MetricValue = 1, **attributes: object) -> MetricRecord:
@@ -126,17 +115,58 @@ def _record_metric(
     return record
 
 
-def _prometheus_name(name: str) -> str:
-    return "".join(character if character.isalnum() else "_" for character in name)
+def _metric_payload(record: MetricRecord) -> dict[str, object]:
+    data_point = {
+        "attributes": _attributes(record.attributes),
+        "timeUnixNano": str(time_ns()),
+    }
+    if record.kind == "histogram":
+        data_point.update({"count": "1", "sum": float(record.value)})
+        return {
+            "name": record.name,
+            "unit": record.unit or "",
+            "histogram": {"aggregationTemporality": 2, "dataPoints": [data_point]},
+        }
+    data_point["asDouble"] = float(record.value)
+    if record.kind == "counter":
+        return {
+            "name": record.name,
+            "unit": record.unit or "",
+            "sum": {
+                "aggregationTemporality": 2,
+                "isMonotonic": True,
+                "dataPoints": [data_point],
+            },
+        }
+    return {
+        "name": record.name,
+        "unit": record.unit or "",
+        "gauge": {"dataPoints": [data_point]},
+    }
 
 
-def _labels(attributes: dict[str, str | int | float | bool]) -> tuple[tuple[str, str], ...]:
-    allowed = {"service", "worker", "route", "method", "status_code", "failure_category"}
-    return tuple(sorted((key, str(value)) for key, value in attributes.items() if key in allowed))
+def _attributes(attributes: dict[str, str | int | float | bool]) -> list[dict[str, object]]:
+    return [_attribute(key, value) for key, value in attributes.items()]
 
 
-def _label_text(labels: tuple[tuple[str, str], ...]) -> str:
-    if not labels:
-        return ""
-    body = ",".join(f'{key}="{quote(value, safe="/:-_")}"' for key, value in labels)
-    return f"{{{body}}}"
+def _attribute(key: str, value: str | int | float | bool) -> dict[str, object]:
+    if isinstance(value, bool):
+        return {"key": key, "value": {"boolValue": value}}
+    if isinstance(value, int):
+        return {"key": key, "value": {"intValue": str(value)}}
+    if isinstance(value, float):
+        return {"key": key, "value": {"doubleValue": value}}
+    return _string_attribute(key, value)
+
+
+def _string_attribute(key: str, value: str) -> dict[str, object]:
+    return {"key": key, "value": {"stringValue": value}}
+
+
+def _post_json(url: str, payload: dict[str, Any]) -> None:
+    body = json.dumps(payload).encode("utf-8")
+    req = request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        request.urlopen(req, timeout=0.25).close()
+    except OSError:
+        return None

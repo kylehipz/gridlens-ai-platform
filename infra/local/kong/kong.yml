@@ -21,9 +21,3 @@ services:
         methods:
           - GET
         strip_path: false
-      - name: gridlens-observability-metrics
-        paths:
-          - /metrics
-        methods:
-          - GET
-        strip_path: false

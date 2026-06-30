@@ -117,9 +117,20 @@ def test_fastapi_middleware_returns_correlated_safe_error_response(caplog) -> No
 
 
 def test_local_smoke_routes_emit_visible_metrics(monkeypatch) -> None:
+    metric_posts: list[str] = []
+
+    class Response:
+        def close(self) -> None:
+            return None
+
+    def capture_metric_post(request, timeout: float):
+        metric_posts.append(request.full_url)
+        return Response()
+
     monkeypatch.setenv("OBSERVABILITY_MODE", "local")
     monkeypatch.setenv("LOG_EXPORTER", "stdout")
     monkeypatch.setenv("TRACES_EXPORTER", "noop")
+    monkeypatch.setattr("gridlens_observability.metrics.request.urlopen", capture_metric_post)
 
     app = FastAPI()
     instrument_fastapi_app(app, service_name="test-service")
@@ -128,10 +139,9 @@ def test_local_smoke_routes_emit_visible_metrics(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json()["checks"] == ["log", "metric", "trace"]
 
+    assert "http://otel-collector:4318/v1/metrics" in metric_posts
     metrics = run_request(app, lambda client: client.get("/metrics"))
-    assert metrics.status_code == 200
-    assert "gridlens_observability_smoke_requests_total" in metrics.text
-    assert 'route="/__observability/smoke"' in metrics.text
+    assert metrics.status_code == 404
 
 
 def test_smoke_routes_can_be_forced_outside_local_mode(monkeypatch) -> None:

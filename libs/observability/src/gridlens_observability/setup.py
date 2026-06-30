@@ -1,6 +1,6 @@
 from .config import ObservabilitySettings, settings_from_env
 from .logging import OtlpLogExporter, set_log_exporter
-from .metrics import PrometheusMetricExporter, set_metric_exporter
+from .metrics import OtlpMetricExporter, set_metric_exporter
 from .tracing import OtlpTraceExporter, set_trace_exporter
 
 
@@ -10,8 +10,8 @@ def configure_observability(
     settings = settings_from_env(environ)
     endpoint = settings.otlp_endpoint
 
-    if settings.metrics_exporter == "prometheus":
-        set_metric_exporter(PrometheusMetricExporter())
+    if endpoint and settings.metrics_exporter == "prometheus":
+        set_metric_exporter(OtlpMetricExporter(endpoint, service_name=service_name))
     if endpoint and settings.log_exporter == "loki":
         set_log_exporter(OtlpLogExporter(endpoint, service_name=service_name))
     if endpoint and settings.traces_exporter == "tempo":

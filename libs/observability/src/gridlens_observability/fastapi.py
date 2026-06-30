@@ -3,13 +3,13 @@ from time import perf_counter
 from uuid import uuid4
 
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse
 from gridlens_contracts.errors import ErrorEnvelope
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .context import bind_context, clear_context
 from .logging import json_log_record
-from .metrics import counter, gauge, histogram, prometheus_metrics_text
+from .metrics import counter, gauge, histogram
 from .setup import configure_observability
 from .tracing import TraceContext, extract_trace_context, start_span
 
@@ -135,18 +135,10 @@ class ObservabilityASGIMiddleware:
 
 def instrument_fastapi_app(app: FastAPI, *, service_name: str) -> FastAPI:
     settings = configure_observability(service_name=service_name)
-    _add_metrics_route(app)
     if settings.smoke_routes_enabled:
         _add_smoke_routes(app, service_name=service_name)
     app.add_middleware(ObservabilityASGIMiddleware, service_name=service_name)
     return app
-
-
-def _add_metrics_route(app: FastAPI) -> None:
-    async def metrics() -> PlainTextResponse:
-        return PlainTextResponse(prometheus_metrics_text(), media_type="text/plain; version=0.0.4")
-
-    app.add_api_route("/metrics", metrics, methods=["GET"], include_in_schema=False)
 
 
 def _add_smoke_routes(app: FastAPI, *, service_name: str) -> None:

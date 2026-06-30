@@ -401,13 +401,12 @@ curl -H 'X-Request-ID: manual-req-1' \
   http://127.0.0.1:${API_HOST_PORT:-8000}/__observability/smoke
 curl -H 'X-Request-ID: manual-req-2' \
   http://127.0.0.1:${API_HOST_PORT:-8000}/__observability/fail
-curl http://127.0.0.1:${API_HOST_PORT:-8000}/metrics
 ```
 
-`/__observability/smoke` emits a structured log, Prometheus-visible metrics, and
-a trace span. `/__observability/fail` returns the standard safe error envelope
-with the same request ID that appears in logs and traces. In Grafana, use
-Prometheus for `gridlens_observability_smoke_requests_total`, Loki for
+`/__observability/smoke` emits a structured log, OTLP metrics, and a trace span
+to the collector. `/__observability/fail` returns the standard safe error
+envelope with the same request ID that appears in logs and traces. In Grafana,
+use Prometheus for the smoke request metric exported by the collector, Loki for
 `observability_smoke`, and Tempo for the returned `trace_id`.
 
 Local telemetry must remain public-safe. Logs, metric labels, and span

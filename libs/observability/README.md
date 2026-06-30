@@ -123,11 +123,10 @@ settings are documented in `docs/production-observability.md` and
 When `OBSERVABILITY_MODE=local`, or when
 `OBSERVABILITY_SMOKE_ROUTES_ENABLED=true`, FastAPI services expose:
 
-- `GET /__observability/smoke`: emits a structured log, Prometheus metrics, and
-  an `observability.smoke` span.
+- `GET /__observability/smoke`: emits a structured log, OTLP metrics, and
+  an `observability.smoke` span through the local OTLP collector.
 - `GET /__observability/fail`: emits a failure log and metric, then returns a
   safe correlated `ErrorEnvelope`.
-- `GET /metrics`: exposes Prometheus text-format metrics for local scraping.
 
 These routes are for local/manual observability validation only. Do not rely on
 them for product behavior.
