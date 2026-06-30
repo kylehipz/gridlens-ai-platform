@@ -1,4 +1,12 @@
-from .permissions import PermissionDenied, require_role
+from .permissions import (
+    AuthorizationAuditSink,
+    AuthorizationDeniedAuditRecord,
+    PermissionDenied,
+    has_platform_role,
+    require_platform_role,
+    require_role,
+    require_tenant_role,
+)
 from .resolution import (
     AppUserRecord,
     IdentityRepository,
@@ -22,6 +30,8 @@ __all__ = [
     "AuthSettings",
     "AuthenticationError",
     "AppUserRecord",
+    "AuthorizationAuditSink",
+    "AuthorizationDeniedAuditRecord",
     "DevTokenValidator",
     "IdentityRepository",
     "IdentityResolutionError",
@@ -32,5 +42,8 @@ __all__ = [
     "TenantMembershipRecord",
     "TestTokenValidator",
     "bearer_token",
+    "has_platform_role",
+    "require_platform_role",
     "require_role",
+    "require_tenant_role",
 ]
