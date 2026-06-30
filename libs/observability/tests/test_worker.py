@@ -1,4 +1,3 @@
-import json
 import logging
 
 import pytest
@@ -31,14 +30,14 @@ def test_worker_job_success_records_logs_metrics_and_consumer_span(caplog) -> No
         ) as context:
             assert context.job_id == "job_1"
 
-    payloads = [json.loads(record.message) for record in caplog.records]
-    assert [payload["message"] for payload in payloads] == [
+    records = [record for record in caplog.records if record.name == "gridlens.data-operations-service.worker"]
+    assert [record.getMessage() for record in records] == [
         "worker_job_started",
         "worker_job_succeeded",
     ]
-    assert payloads[0]["job_id"] == "job_1"
-    assert payloads[0]["tenant_id"] == "tenant_a"
-    assert payloads[0]["request_id"] == "req_1"
+    assert records[0].job_id == "job_1"
+    assert records[0].tenant_id == "tenant_a"
+    assert records[0].request_id == "req_1"
     assert metrics.records()[0].name == "gridlens.worker.job.duration"
     assert metrics.records()[0].attributes["status"] == "success"
     assert traces.records()[0].name == "worker.consume"
@@ -68,13 +67,19 @@ def test_worker_job_failure_logs_safe_fields_and_error_metrics(caplog) -> None:
             ):
                 raise RuntimeError("raw secret token=abc")
 
-    payloads = [json.loads(record.message) for record in caplog.records]
-    failure = next(payload for payload in payloads if payload["message"] == "worker_job_failed")
-    assert failure["job_id"] == "job_1"
-    assert failure["tenant_id"] == "tenant_a"
-    assert failure["failure_category"] == "validation_error"
-    assert failure["user_message"] == "The job input is invalid."
-    assert "raw secret token=abc" not in json.dumps(payloads)
+    failure_record = next(
+        record for record in caplog.records if record.getMessage() == "worker_job_failed"
+    )
+    assert failure_record.job_id == "job_1"
+    assert failure_record.tenant_id == "tenant_a"
+    assert failure_record.failure_category == "validation_error"
+    assert failure_record.user_message == "The job input is invalid."
+    assert failure_record.error_function == "test_worker_job_failure_logs_safe_fields_and_error_metrics"
+    assert failure_record.error_module_path == "test_worker"
+    assert failure_record.error_file_path.endswith("test_worker.py")
+    assert isinstance(failure_record.error_line_no, int)
+    assert failure_record.levelname == "ERROR"
+    assert "raw secret token=abc" not in str(failure_record.__dict__)
     assert metrics.records()[0].name == "gridlens.worker.job.errors"
     assert metrics.records()[0].attributes["failure_category"] == "validation_error"
     assert metrics.records()[1].attributes["status"] == "failure"

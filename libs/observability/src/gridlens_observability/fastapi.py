@@ -8,7 +8,7 @@ from gridlens_contracts.errors import ErrorEnvelope
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .context import bind_context, clear_context
-from .logging import json_log_record
+from .logging import exception_source_fields, log_extra
 from .metrics import counter, gauge, histogram
 from .setup import configure_observability
 from .tracing import TraceContext, extract_trace_context, start_span
@@ -80,14 +80,15 @@ class ObservabilityASGIMiddleware:
                     method=method,
                     error_type=exc.__class__.__name__,
                 )
-                self.logger.exception(
-                    json_log_record(
-                        "http_request_failed",
+                self.logger.error(
+                    "http_request_failed",
+                    **log_extra(
                         status_code=status_code,
                         route=route,
                         method=method,
                         error_type=exc.__class__.__name__,
-                    )
+                        **exception_source_fields(exc.__traceback__),
+                    ),
                 )
                 response = JSONResponse(
                     status_code=500,
@@ -121,13 +122,13 @@ class ObservabilityASGIMiddleware:
                 status_code=status_code,
             )
             self.logger.info(
-                json_log_record(
-                    "http_request_completed",
+                "http_request_completed",
+                **log_extra(
                     status_code=status_code,
                     route=route,
                     method=method,
                     duration_ms=duration_ms,
-                )
+                ),
             )
         finally:
             clear_context()
@@ -157,11 +158,13 @@ def _add_smoke_routes(app: FastAPI, *, service_name: str) -> None:
         )
         gauge("gridlens.observability.smoke.gauge", 1, service=service_name)
         with start_span("observability.smoke", service=service_name) as span:
-            json_log_record(
+            logging.getLogger(f"gridlens.{service_name}.observability").info(
                 "observability_smoke",
-                service=service_name,
-                route="/__observability/smoke",
-                account_number="1234567890",
+                **log_extra(
+                    service=service_name,
+                    route="/__observability/smoke",
+                    account_number="1234567890",
+                ),
             )
             return {
                 "status": "ok",
@@ -177,12 +180,14 @@ def _add_smoke_routes(app: FastAPI, *, service_name: str) -> None:
             service=service_name,
             route="/__observability/fail",
         )
-        json_log_record(
+        logging.getLogger(f"gridlens.{service_name}.observability").error(
             "observability_smoke_failure",
-            service=service_name,
-            route="/__observability/fail",
-            failure_category="manual_smoke",
-            user_message="Manual observability failure smoke route.",
+            **log_extra(
+                service=service_name,
+                route="/__observability/fail",
+                failure_category="manual_smoke",
+                user_message="Manual observability failure smoke route.",
+            ),
         )
         raise RuntimeError("manual observability smoke failure token=abc")
 

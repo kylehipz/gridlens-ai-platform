@@ -127,6 +127,7 @@ class LocalRuntimeConfigTests(TestCase):
         env_example = (ROOT / ".env.example").read_text()
         prometheus = (ROOT / "infra" / "local" / "observability" / "prometheus.yml").read_text()
         otel = (ROOT / "infra" / "local" / "observability" / "otel-collector.yaml").read_text()
+        loki = (ROOT / "infra" / "local" / "observability" / "loki.yaml").read_text()
         datasources = (
             ROOT
             / "infra"
@@ -162,7 +163,9 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertIn("otel-collector:8889", prometheus)
         self.assertNotIn("job_name: gridlens-services", prometheus)
         self.assertNotIn("metrics_path: /metrics", prometheus)
-        self.assertIn("loki:3100/loki/api/v1/push", otel)
+        self.assertIn("endpoint: http://loki:3100/otlp", otel)
+        self.assertIn("exporters: [otlphttp/loki, debug]", otel)
+        self.assertIn("allow_structured_metadata: true", loki)
         self.assertIn("tempo:4317", otel)
         self.assertIn("url: http://prometheus:9090", datasources)
         self.assertIn("url: http://loki:3100", datasources)
@@ -201,6 +204,13 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertNotIn("run-api:", makefile)
         self.assertNotIn("gridlens_api_gateway", makefile)
 
+    def test_makefile_exposes_destructive_purge_target(self) -> None:
+        makefile = (ROOT / "Makefile").read_text()
+
+        self.assertIn("purge:", makefile)
+        self.assertIn("--volumes --remove-orphans --rmi local", makefile)
+        self.assertIn("purge", makefile.split(".PHONY:", maxsplit=1)[1])
+
     def test_docker_builds_use_root_pyproject_without_local_artifacts(self) -> None:
         compose = (ROOT / "docker-compose.yml").read_text()
         dockerignore = (ROOT / ".dockerignore").read_text()
@@ -220,6 +230,16 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertIn("COPY pyproject.toml ./", data_operations_dockerfile)
         self.assertIn(".venv", dockerignore)
         self.assertIn(".git", dockerignore)
+
+    def test_service_images_include_shared_observability_dependencies(self) -> None:
+        for service in API_SERVICES:
+            with self.subTest(service=service):
+                dockerfile = (ROOT / "services" / service / "Dockerfile").read_text()
+
+                self.assertIn("/app/libs/contracts/src", dockerfile)
+                self.assertIn("/app/libs/observability/src", dockerfile)
+                self.assertIn("COPY libs/contracts/src ./libs/contracts/src", dockerfile)
+                self.assertIn("COPY libs/observability/src ./libs/observability/src", dockerfile)
 
     def test_runtime_files_do_not_include_static_aws_credentials(self) -> None:
         secret_pattern = re.compile(

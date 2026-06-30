@@ -3,6 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 COLLECTION = ROOT / "postman" / "gridlens-local.postman_collection.json"
+ENVIRONMENT = ROOT / "postman" / "gridlens-local.postman_environment.json"
 
 
 def _walk_items(items: list[dict]) -> list[dict]:
@@ -40,3 +41,21 @@ def test_gridlens_local_collection_covers_health_requests() -> None:
     assert "identity_tenant_service_url" in variable_names
     assert "alerts_anomalies_service_url" in variable_names
     assert "api_gateway_service_url" not in variable_names
+
+
+def test_gridlens_local_environment_has_defaults_and_descriptions() -> None:
+    collection = json.loads(COLLECTION.read_text())
+    environment = json.loads(ENVIRONMENT.read_text())
+    collection_variable_names = {variable["key"] for variable in collection["variable"]}
+    environment_values = {value["key"]: value for value in environment["values"]}
+
+    assert environment["name"] == "GridLens Local"
+    assert collection_variable_names <= set(environment_values)
+    assert environment_values["base_url"]["value"] == "http://127.0.0.1:8000"
+    assert environment_values["tenant_id"]["value"] == "tenant_demo"
+    assert environment_values["user_id"]["value"] == "user_demo"
+    assert environment_values["access_token"]["type"] == "secret"
+
+    for value in environment_values.values():
+        if value["value"] == "":
+            assert value.get("description")

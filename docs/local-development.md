@@ -166,7 +166,9 @@ make dev
 Prefer the Makefile target for day-to-day work. `make down` stops containers and
 preserves named volumes. `make reset-local-state` is the explicit destructive
 reset path and removes local named volumes so PostgreSQL init scripts rerun on
-the next startup.
+the next startup. `make purge` is stronger: it stops the full development
+Compose stack and removes containers, named volumes, orphans, and locally built
+images.
 
 ## Kong Gateway
 
@@ -293,6 +295,13 @@ startup:
 make reset-local-state
 ```
 
+Remove all local Compose containers, named volumes, orphans, and locally built
+images:
+
+```sh
+make purge
+```
+
 ## PostgreSQL and PGVector
 
 The local database uses a named Docker volume so data persists across
@@ -389,9 +398,12 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
 ```
 
 The collector configuration lives under `infra/local/observability/` and routes
-OTLP metrics to Prometheus, logs to Loki, and traces to Tempo. Grafana
-provisions Prometheus, Loki, and Tempo data sources automatically and loads the
-minimal `GridLens Local Service Health` dashboard from the same directory.
+OTLP metrics to Prometheus, logs to Loki's native OTLP endpoint, and traces to
+Tempo. Loki structured metadata is enabled so OTLP log attributes such as
+`request_id`, `correlation_id`, `trace_id`, `route`, `method`, and `status_code`
+appear as fields in Grafana log details. Grafana provisions Prometheus, Loki,
+and Tempo data sources automatically and loads the minimal `GridLens Local
+Service Health` dashboard from the same directory.
 
 For manual observability checks, local API services expose dev-only smoke
 routes:

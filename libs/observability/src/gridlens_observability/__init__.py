@@ -9,13 +9,13 @@ from .context import (
 )
 from .fastapi import instrument_fastapi_app
 from .logging import (
-    InMemoryLogExporter,
     JsonFormatter,
-    OtlpLogExporter,
     configure_json_logging,
-    json_log_record,
+    configure_otel_logging,
+    is_gridlens_json_handler,
+    is_gridlens_otel_handler,
+    log_extra,
     redact_value,
-    set_log_exporter,
     structured_record,
 )
 from .metrics import (
@@ -44,13 +44,11 @@ from .worker import WorkerMessageContext, observe_worker_job
 
 __all__ = [
     "InMemoryMetricExporter",
-    "InMemoryLogExporter",
     "InMemoryTraceExporter",
     "JsonFormatter",
     "MetricRecord",
     "NoopMetricExporter",
     "NoopTraceExporter",
-    "OtlpLogExporter",
     "OtlpMetricExporter",
     "OtlpTraceExporter",
     "ObservabilityContext",
@@ -61,6 +59,7 @@ __all__ = [
     "bind_context",
     "clear_context",
     "configure_json_logging",
+    "configure_otel_logging",
     "configure_observability",
     "counter",
     "current_context",
@@ -69,12 +68,13 @@ __all__ = [
     "gauge",
     "histogram",
     "instrument_fastapi_app",
-    "json_log_record",
     "inject_trace_context",
+    "is_gridlens_json_handler",
+    "is_gridlens_otel_handler",
+    "log_extra",
     "redact_value",
     "reset_context",
     "set_metric_exporter",
-    "set_log_exporter",
     "set_trace_exporter",
     "settings_from_env",
     "start_span",

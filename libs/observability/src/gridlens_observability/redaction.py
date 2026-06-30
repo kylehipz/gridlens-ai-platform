@@ -15,6 +15,16 @@ SENSITIVE_FIELD_PARTS = (
     "token",
 )
 
+SAFE_TELEMETRY_FIELD_NAMES = {
+    "error_module_path",
+    "error_file_path",
+    "error_function",
+    "error_line_no",
+    "source_module",
+    "source_function",
+    "source_line_no",
+}
+
 SIGNED_URL_PATTERN = re.compile(r"([?&](X-Amz-Signature|Signature)=)[^&]+", re.IGNORECASE)
 BEARER_PATTERN = re.compile(r"Bearer\s+[A-Za-z0-9._~+/=-]+", re.IGNORECASE)
 SECRET_ASSIGNMENT_PATTERN = re.compile(
@@ -51,6 +61,8 @@ def redact_fields(fields: dict[str, Any]) -> dict[str, Any]:
 
 
 def redact_field(key: str, value: Any) -> Any:
+    if key in SAFE_TELEMETRY_FIELD_NAMES:
+        return redact_value(value)
     normalized = "".join(character for character in key.lower() if character.isalnum())
     if any(part in normalized for part in SENSITIVE_FIELD_PARTS):
         return _safe_sensitive_value(value)

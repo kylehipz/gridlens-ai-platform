@@ -26,7 +26,7 @@ PSQL_SUPERUSER = docker exec -e PGPASSWORD="$(POSTGRES_SUPERUSER_PASSWORD)" "$(P
 PSQL_APP = docker exec -e PGPASSWORD="$(POSTGRES_PASSWORD)" "$(POSTGRES_CONTAINER_ID)" psql -U "$(POSTGRES_USER)" -d "$(POSTGRES_DB)"
 endif
 
-.PHONY: setup setup-frontend dev dev-gateway down reset-local-state test test-backend test-frontend test-contracts test-libs test-local-db bootstrap-live-db test-live-db lint typecheck format migrate seed run run-identity-tenant run-frontend
+.PHONY: setup setup-frontend dev dev-gateway down reset-local-state purge test test-backend test-frontend test-contracts test-libs test-local-db bootstrap-live-db test-live-db lint typecheck format migrate seed run run-identity-tenant run-frontend
 
 setup: setup-frontend
 	@printf '%s\n' 'GridLens local setup'
@@ -65,6 +65,9 @@ down:
 
 reset-local-state:
 	$(COMPOSE) $(COMPOSE_BASE) down --volumes --remove-orphans
+
+purge:
+	$(COMPOSE) $(COMPOSE_DEV) down --volumes --remove-orphans --rmi local
 
 test: test-backend test-frontend
 	@printf '%s\n' 'Default offline tests completed.'

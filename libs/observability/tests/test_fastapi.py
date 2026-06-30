@@ -1,4 +1,3 @@
-import json
 import logging
 from collections.abc import Awaitable, Callable
 
@@ -58,12 +57,13 @@ def test_fastapi_middleware_binds_request_context_and_records_signals(caplog) ->
     assert response.headers["X-Request-ID"] == "req_test"
     assert response.headers["X-Correlation-ID"] == "corr_test"
 
-    log_payload = json.loads(caplog.records[-1].message)
-    assert log_payload["message"] == "http_request_completed"
-    assert log_payload["request_id"] == "req_test"
-    assert log_payload["correlation_id"] == "corr_test"
-    assert log_payload["trace_id"] == "trace_parent"
-    assert log_payload["service"] == "test-service"
+    log_record = next(
+        record for record in caplog.records if record.getMessage() == "http_request_completed"
+    )
+    assert log_record.request_id == "req_test"
+    assert log_record.correlation_id == "corr_test"
+    assert log_record.trace_id == "trace_parent"
+    assert log_record.service == "test-service"
 
     metric_names = [record.name for record in metrics.records()]
     assert "gridlens.http.server.duration" in metric_names
@@ -103,11 +103,17 @@ def test_fastapi_middleware_returns_correlated_safe_error_response(caplog) -> No
         "request_id": "req_error",
     }
 
-    payloads = [json.loads(record.message) for record in caplog.records]
-    failure_log = next(payload for payload in payloads if payload["message"] == "http_request_failed")
-    assert failure_log["request_id"] == "req_error"
-    assert failure_log["error_type"] == "RuntimeError"
-    assert "secret token=abc" not in json.dumps(payloads)
+    failure_record = next(
+        record for record in caplog.records if record.getMessage() == "http_request_failed"
+    )
+    assert failure_record.request_id == "req_error"
+    assert failure_record.error_type == "RuntimeError"
+    assert failure_record.error_function == "fail"
+    assert failure_record.error_module_path == "test_fastapi"
+    assert failure_record.error_file_path.endswith("test_fastapi.py")
+    assert isinstance(failure_record.error_line_no, int)
+    assert failure_record.levelname == "ERROR"
+    assert "secret token=abc" not in str(failure_record.__dict__)
 
     error_metrics = [
         record for record in metrics.records() if record.name == "gridlens.http.server.errors"

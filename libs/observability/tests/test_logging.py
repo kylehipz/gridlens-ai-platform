@@ -1,16 +1,25 @@
+import logging
 import unittest
+from io import StringIO
+from json import loads
+from unittest.mock import patch
 
 from gridlens_observability import (
     InMemoryMetricExporter,
     InMemoryTraceExporter,
     bind_context,
     clear_context,
+    configure_json_logging,
+    configure_otel_logging,
     counter,
     current_context,
     extract_trace_context,
     gauge,
     histogram,
     inject_trace_context,
+    is_gridlens_json_handler,
+    is_gridlens_otel_handler,
+    log_extra,
     redact_value,
     reset_context,
     set_metric_exporter,
@@ -19,6 +28,7 @@ from gridlens_observability import (
     start_span,
     structured_record,
 )
+from opentelemetry.instrumentation.logging.handler import LoggingHandler
 
 
 class ObservabilityTests(unittest.TestCase):
@@ -26,6 +36,12 @@ class ObservabilityTests(unittest.TestCase):
         clear_context()
         set_metric_exporter(InMemoryMetricExporter())
         set_trace_exporter(InMemoryTraceExporter())
+        logging.getLogger().handlers = [
+            handler
+            for handler in logging.getLogger().handlers
+            if not is_gridlens_json_handler(handler)
+            and not is_gridlens_otel_handler(handler)
+        ]
 
     def test_redacts_account_tokens_and_signed_urls(self):
         self.assertEqual("******7890", redact_value("1234567890"))
@@ -61,12 +77,16 @@ class ObservabilityTests(unittest.TestCase):
 
         bind_context(request_id="req_3")
         clear_context()
-        self.assertEqual({"message": "done"}, structured_record("done"))
+        record = structured_record("done")
+        self.assertEqual("info", record["level"])
+        self.assertEqual("done", record["message"])
+        self.assertEqual("test_context_can_be_cleared_or_reset", record["source_function"])
 
     def test_structured_record_redacts_common_secret_field_variants(self):
         clear_context()
         record = structured_record(
             "done",
+            level="warning",
             api_key="secret",
             access_token="secret",
             authorization="Bearer secret",
@@ -77,7 +97,56 @@ class ObservabilityTests(unittest.TestCase):
         self.assertEqual("***", record["access_token"])
         self.assertEqual("***", record["authorization"])
         self.assertEqual("***", record["credential_id"])
+        self.assertEqual("warning", record["level"])
         self.assertEqual("ok", record["outcome"])
+
+    def test_log_extra_merges_context_and_redacts_fields_for_stdlib_logging(self):
+        clear_context()
+        bind_context(request_id="req_1", tenant_id="tenant_a")
+        logger = logging.getLogger("gridlens.test")
+
+        with self.assertLogs("gridlens.test", level="INFO") as captured:
+            logger.info("event_completed", **log_extra(api_key="secret", outcome="ok"))
+
+        record = captured.records[0]
+        self.assertEqual("event_completed", record.getMessage())
+        self.assertEqual("req_1", record.__dict__["request_id"])
+        self.assertEqual("tenant_a", record.__dict__["tenant_id"])
+        self.assertEqual("***", record.__dict__["api_key"])
+        self.assertEqual("ok", record.__dict__["outcome"])
+
+    def test_configure_otel_logging_installs_standard_logging_handler(self):
+        configure_otel_logging(endpoint="http://otel-collector:4318", service_name="test-service")
+
+        otel_handlers = [
+            handler
+            for handler in logging.getLogger().handlers
+            if is_gridlens_otel_handler(handler)
+        ]
+        self.assertEqual(1, len(otel_handlers))
+        self.assertIsInstance(otel_handlers[0], LoggingHandler)
+
+    def test_configure_json_logging_structures_uvicorn_access_logs(self):
+        stream = StringIO()
+        with patch("sys.stderr", stream):
+            configure_json_logging()
+            logger = logging.getLogger("uvicorn.access")
+            logger.info(
+                '%s - "%s %s HTTP/%s" %d',
+                "127.0.0.1:1234",
+                "GET",
+                "/health",
+                "1.1",
+                200,
+            )
+
+        payload = loads(stream.getvalue())
+        self.assertEqual("http_access", payload["message"])
+        self.assertEqual("info", payload["level"])
+        self.assertEqual("GET", payload["method"])
+        self.assertEqual("/health", payload["route"])
+        self.assertEqual(200, payload["status_code"])
+        self.assertEqual("uvicorn.access", payload["logger"])
 
     def test_metric_records_include_safe_context_and_low_cardinality_attributes(self):
         clear_context()

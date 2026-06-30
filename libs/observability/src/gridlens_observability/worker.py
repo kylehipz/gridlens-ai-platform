@@ -5,7 +5,7 @@ from time import perf_counter
 from typing import Iterator
 
 from .context import bind_context, clear_context
-from .logging import json_log_record
+from .logging import exception_source_fields, log_extra
 from .metrics import counter, histogram
 from .tracing import TraceContext, extract_trace_context, start_span
 
@@ -76,13 +76,13 @@ def observe_worker_job(
     status = "success"
     active_span: TraceContext | None = None
     try:
-        logger.info(json_log_record("worker_job_started"))
+        logger.info("worker_job_started", **log_extra())
         with start_span("worker.consume", parent=message_context.trace_context(), worker=worker_name) as span:
             active_span = span
             yield message_context
         if active_span:
             bind_context(trace_id=active_span.trace_id, span_id=active_span.span_id)
-        logger.info(json_log_record("worker_job_succeeded"))
+        logger.info("worker_job_succeeded", **log_extra())
     except Exception as exc:
         status = "failure"
         if active_span:
@@ -94,13 +94,14 @@ def observe_worker_job(
             failure_category=failure_category,
             error_type=exc.__class__.__name__,
         )
-        logger.exception(
-            json_log_record(
-                "worker_job_failed",
+        logger.error(
+            "worker_job_failed",
+            **log_extra(
                 failure_category=failure_category,
                 user_message=user_safe_failure_message,
                 error_type=exc.__class__.__name__,
-            )
+                **exception_source_fields(exc.__traceback__),
+            ),
         )
         raise
     finally:

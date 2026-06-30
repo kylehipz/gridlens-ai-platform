@@ -1,4 +1,3 @@
-import json
 import logging
 
 from gridlens_contracts.audit import AuditAction, AuditContext, AuditEvent
@@ -9,7 +8,7 @@ from gridlens_observability import (
     InMemoryTraceExporter,
     bind_context,
     current_context,
-    json_log_record,
+    log_extra,
     observe_worker_job,
     set_metric_exporter,
     set_trace_exporter,
@@ -32,7 +31,7 @@ def test_synthetic_gateway_service_worker_audit_path_preserves_safe_context(capl
             service="gateway",
         )
         with start_span("gateway.request") as gateway_span:
-            logger.info(json_log_record("gateway_received", account_number="1234567890"))
+            logger.info("gateway_received", **log_extra(account_number="1234567890"))
             context = current_context()
             event = build_event(
                 event_type="generic.workflow.requested",
@@ -70,13 +69,13 @@ def test_synthetic_gateway_service_worker_audit_path_preserves_safe_context(capl
                     span_id=attributes["span_id"],
                 ),
             ).to_dict()
-            logger.info(json_log_record("audit_recorded", audit_context=audit["context"]))
+            logger.info("audit_recorded", **log_extra(audit_context=audit["context"]))
 
-    payloads = [json.loads(record.message) for record in caplog.records]
-    assert {payload["correlation_id"] for payload in payloads} == {"corr_1"}
-    assert {payload["request_id"] for payload in payloads} == {"req_1"}
-    assert payloads[0]["account_number"] == "******7890"
-    assert "1234567890" not in json.dumps(payloads)
+    records = [record for record in caplog.records if record.name.startswith("gridlens")]
+    assert {record.correlation_id for record in records} == {"corr_1"}
+    assert {record.request_id for record in records} == {"req_1"}
+    assert records[0].account_number == "******7890"
+    assert "1234567890" not in str([record.__dict__ for record in records])
 
     assert attributes["request_id"] == "req_1"
     assert attributes["correlation_id"] == "corr_1"
