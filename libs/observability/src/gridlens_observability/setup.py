@@ -9,7 +9,7 @@ def configure_observability(
 ) -> ObservabilitySettings:
     settings = settings_from_env(environ)
     endpoint = settings.otlp_endpoint
-    configure_json_logging()
+    configure_json_logging(uvicorn_access_log_enabled=settings.uvicorn_access_log_enabled)
 
     if endpoint and settings.metrics_exporter in {"prometheus", "otlp"}:
         configure_otel_metrics(endpoint=endpoint, service_name=service_name)

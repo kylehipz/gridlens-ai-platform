@@ -123,20 +123,20 @@ def test_fastapi_middleware_returns_correlated_safe_error_response(caplog) -> No
 
 
 def test_local_smoke_routes_emit_visible_metrics(monkeypatch) -> None:
-    metric_posts: list[str] = []
+    metrics = InMemoryMetricExporter()
 
-    class Response:
-        def close(self) -> None:
-            return None
-
-    def capture_metric_post(request, timeout: float):
-        metric_posts.append(request.full_url)
-        return Response()
+    def capture_metric_exporter(*, endpoint: str, service_name: str) -> None:
+        assert endpoint == "http://otel-collector:4318"
+        assert service_name == "test-service"
+        set_metric_exporter(metrics)
 
     monkeypatch.setenv("OBSERVABILITY_MODE", "local")
     monkeypatch.setenv("LOG_EXPORTER", "stdout")
     monkeypatch.setenv("TRACES_EXPORTER", "noop")
-    monkeypatch.setattr("gridlens_observability.metrics.request.urlopen", capture_metric_post)
+    monkeypatch.setattr(
+        "gridlens_observability.setup.configure_otel_metrics",
+        capture_metric_exporter,
+    )
 
     app = FastAPI()
     instrument_fastapi_app(app, service_name="test-service")
@@ -145,9 +145,30 @@ def test_local_smoke_routes_emit_visible_metrics(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json()["checks"] == ["log", "metric", "trace"]
 
-    assert "http://otel-collector:4318/v1/metrics" in metric_posts
-    metrics = run_request(app, lambda client: client.get("/metrics"))
-    assert metrics.status_code == 404
+    assert "gridlens.observability.smoke.requests" in [
+        record.name for record in metrics.records()
+    ]
+    metrics_response = run_request(app, lambda client: client.get("/metrics"))
+    assert metrics_response.status_code == 404
+
+
+def test_smoke_response_trace_id_matches_recorded_route_and_http_spans(monkeypatch) -> None:
+    traces = InMemoryTraceExporter()
+    set_trace_exporter(traces)
+    monkeypatch.setenv("OBSERVABILITY_MODE", "test")
+    monkeypatch.setenv("OBSERVABILITY_SMOKE_ROUTES_ENABLED", "true")
+
+    app = FastAPI()
+    instrument_fastapi_app(app, service_name="test-service")
+
+    response = run_request(app, lambda client: client.get("/__observability/smoke"))
+
+    assert response.status_code == 200
+    trace_id = response.json()["trace_id"]
+    records = traces.records()
+    assert [record.name for record in records] == ["observability.smoke", "http.server"]
+    assert {record.trace_id for record in records} == {trace_id}
+    assert records[1].span_id == records[0].parent_span_id
 
 
 def test_smoke_routes_can_be_forced_outside_local_mode(monkeypatch) -> None:

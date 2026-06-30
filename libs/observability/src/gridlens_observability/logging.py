@@ -54,7 +54,9 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
-def configure_json_logging(level: int = logging.INFO) -> None:
+def configure_json_logging(
+    level: int = logging.INFO, *, uvicorn_access_log_enabled: bool = False
+) -> None:
     handler = logging.StreamHandler()
     handler.addFilter(GridlensLogRecordFilter())
     handler.setFormatter(JsonFormatter())
@@ -67,7 +69,7 @@ def configure_json_logging(level: int = logging.INFO) -> None:
     ]
     root.handlers.append(handler)
     root.setLevel(level)
-    _configure_library_loggers(level)
+    _configure_library_loggers(level, uvicorn_access_log_enabled=uvicorn_access_log_enabled)
 
 
 def configure_otel_logging(*, endpoint: str, service_name: str, level: int = logging.NOTSET) -> None:
@@ -196,12 +198,19 @@ def _is_pytest_handler(handler: logging.Handler) -> bool:
     return handler.__class__.__module__.startswith("_pytest.")
 
 
-def _configure_library_loggers(level: int) -> None:
-    for logger_name in ("uvicorn", "uvicorn.error", "uvicorn.access", "fastapi"):
+def _configure_library_loggers(level: int, *, uvicorn_access_log_enabled: bool) -> None:
+    for logger_name in ("uvicorn", "uvicorn.error", "fastapi"):
         logger = logging.getLogger(logger_name)
         logger.handlers = []
         logger.propagate = True
         logger.setLevel(level)
+        logger.disabled = False
+
+    access_logger = logging.getLogger("uvicorn.access")
+    access_logger.handlers = []
+    access_logger.propagate = uvicorn_access_log_enabled
+    access_logger.disabled = not uvicorn_access_log_enabled
+    access_logger.setLevel(level)
 
 
 def _normalize_level(level: object) -> str:

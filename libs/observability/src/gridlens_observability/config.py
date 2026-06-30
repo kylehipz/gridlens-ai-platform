@@ -11,6 +11,7 @@ class ObservabilitySettings:
     otlp_endpoint: str | None = None
     service_name: str = "gridlens"
     smoke_routes_enabled: bool = False
+    uvicorn_access_log_enabled: bool = False
 
     @property
     def is_local(self) -> bool:
@@ -35,6 +36,10 @@ def settings_from_env(environ: dict[str, str] | None = None) -> ObservabilitySet
         smoke_routes_enabled=_enabled(
             env.get("OBSERVABILITY_SMOKE_ROUTES_ENABLED"),
             default=defaults.smoke_routes_enabled,
+        ),
+        uvicorn_access_log_enabled=_enabled(
+            env.get("UVICORN_ACCESS_LOG_ENABLED"),
+            default=defaults.uvicorn_access_log_enabled,
         ),
     )
 

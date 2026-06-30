@@ -11,6 +11,7 @@ from gridlens_observability import (
     clear_context,
     configure_json_logging,
     configure_otel_logging,
+    configure_otel_metrics,
     counter,
     current_context,
     extract_trace_context,
@@ -29,6 +30,20 @@ from gridlens_observability import (
     structured_record,
 )
 from opentelemetry.instrumentation.logging.handler import LoggingHandler
+from opentelemetry.sdk.metrics.export import MetricExporter, MetricExportResult, MetricsData
+
+
+class FakeMetricExporter(MetricExporter):
+    def export(
+        self, metrics_data: MetricsData, timeout_millis: float = 10000, **kwargs
+    ) -> MetricExportResult:
+        return MetricExportResult.SUCCESS
+
+    def force_flush(self, timeout_millis: float = 10000) -> bool:
+        return True
+
+    def shutdown(self, timeout_millis: float = 30000, **kwargs) -> None:
+        return None
 
 
 class ObservabilityTests(unittest.TestCase):
@@ -142,10 +157,26 @@ class ObservabilityTests(unittest.TestCase):
         self.assertEqual(1, len(otel_handlers))
         self.assertIsInstance(otel_handlers[0], LoggingHandler)
 
-    def test_configure_json_logging_structures_uvicorn_access_logs(self):
+    def test_configure_json_logging_disables_uvicorn_access_logs_by_default(self):
         stream = StringIO()
         with patch("sys.stderr", stream):
             configure_json_logging()
+            logger = logging.getLogger("uvicorn.access")
+            logger.info(
+                '%s - "%s %s HTTP/%s" %d',
+                "127.0.0.1:1234",
+                "GET",
+                "/health",
+                "1.1",
+                200,
+            )
+
+        self.assertEqual("", stream.getvalue())
+
+    def test_configure_json_logging_structures_uvicorn_access_logs_when_enabled(self):
+        stream = StringIO()
+        with patch("sys.stderr", stream):
+            configure_json_logging(uvicorn_access_log_enabled=True)
             logger = logging.getLogger("uvicorn.access")
             logger.info(
                 '%s - "%s %s HTTP/%s" %d',
@@ -163,6 +194,17 @@ class ObservabilityTests(unittest.TestCase):
         self.assertEqual("/health", payload["route"])
         self.assertEqual(200, payload["status_code"])
         self.assertEqual("uvicorn.access", payload["logger"])
+
+    def test_configure_json_logging_keeps_uvicorn_error_logs_at_info(self):
+        stream = StringIO()
+        with patch("sys.stderr", stream):
+            configure_json_logging()
+            logging.getLogger("uvicorn.error").info("server_started")
+
+        payload = loads(stream.getvalue())
+        self.assertEqual("server_started", payload["message"])
+        self.assertEqual("info", payload["level"])
+        self.assertEqual("uvicorn.error", payload["logger"])
 
     def test_metric_records_include_safe_context_and_low_cardinality_attributes(self):
         clear_context()
@@ -210,6 +252,21 @@ class ObservabilityTests(unittest.TestCase):
         self.assertEqual("***", span_attributes["account_id"])
         self.assertEqual("******7890", span_attributes["account_number"])
         self.assertEqual("***", span_attributes["meter_number"])
+
+    def test_configure_otel_metrics_installs_sdk_metric_exporter(self):
+        with patch("gridlens_observability.metrics.OTLPMetricExporter") as exporter:
+            exporter.return_value = FakeMetricExporter()
+            configure_otel_metrics(endpoint="http://otel-collector:4318", service_name="test-service")
+
+            record = counter("gridlens.requests.total", route="/health", status_code=200)
+
+        self.assertEqual("gridlens.requests.total", record.name)
+        self.assertEqual("counter", record.kind)
+        self.assertEqual("/health", record.attributes["route"])
+        exporter.assert_called_once_with(
+            endpoint="http://otel-collector:4318/v1/metrics",
+            timeout=1,
+        )
 
     def test_trace_spans_propagate_context_and_capture_errors(self):
         clear_context()

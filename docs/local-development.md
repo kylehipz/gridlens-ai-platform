@@ -395,6 +395,7 @@ LOG_EXPORTER=loki
 METRICS_EXPORTER=prometheus
 TRACES_EXPORTER=tempo
 OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+UVICORN_ACCESS_LOG_ENABLED=false
 ```
 
 The collector configuration lives under `infra/local/observability/` and routes
@@ -404,6 +405,9 @@ Tempo. Loki structured metadata is enabled so OTLP log attributes such as
 appear as fields in Grafana log details. Grafana provisions Prometheus, Loki,
 and Tempo data sources automatically and loads the minimal `GridLens Local
 Service Health` dashboard from the same directory.
+`uvicorn.access` logs are disabled by default to avoid duplicating the
+structured `http_request_completed` application log; set
+`UVICORN_ACCESS_LOG_ENABLED=true` when debugging raw Uvicorn access records.
 
 For manual observability checks, local API services expose dev-only smoke
 routes:

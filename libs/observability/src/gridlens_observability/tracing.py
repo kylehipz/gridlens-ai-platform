@@ -6,6 +6,25 @@ from typing import Any, Iterator, Protocol
 from urllib import request
 from uuid import uuid4
 
+from opentelemetry import trace
+from opentelemetry.context import Context
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.trace import (
+    INVALID_SPAN_CONTEXT,
+    NonRecordingSpan,
+    Span,
+    SpanContext,
+    SpanKind,
+    Status,
+    StatusCode,
+    TraceFlags,
+    TraceState,
+    set_span_in_context,
+)
+
 from .context import bind_context, current_context, current_context_fields, reset_context
 from .redaction import safe_attributes
 
@@ -37,8 +56,7 @@ class SpanRecord:
 
 
 class TraceExporter(Protocol):
-    def emit(self, record: SpanRecord) -> None:
-        ...
+    def emit(self, record: SpanRecord) -> None: ...
 
 
 class NoopTraceExporter:
@@ -103,6 +121,7 @@ class OtlpTraceExporter:
 
 
 _trace_exporter: TraceExporter = NoopTraceExporter()
+_otel_trace_provider: TracerProvider | None = None
 
 
 def set_trace_exporter(exporter: TraceExporter) -> None:
@@ -111,7 +130,20 @@ def set_trace_exporter(exporter: TraceExporter) -> None:
 
 
 def configure_otel_tracing(*, endpoint: str, service_name: str) -> None:
-    set_trace_exporter(OtlpTraceExporter(endpoint, service_name=service_name))
+    global _otel_trace_provider
+    provider = TracerProvider(
+        resource=Resource.create({"service.name": service_name}),
+    )
+    provider.add_span_processor(
+        BatchSpanProcessor(
+            OTLPSpanExporter(endpoint=f"{endpoint.rstrip('/')}/v1/traces"),
+            schedule_delay_millis=250,
+            export_timeout_millis=1000,
+        )
+    )
+    if _otel_trace_provider is None:
+        trace.set_tracer_provider(provider)
+    _otel_trace_provider = provider
 
 
 def extract_trace_context(carrier: dict[str, str] | None) -> TraceContext | None:
@@ -150,30 +182,93 @@ def start_span(
     started_at = perf_counter()
     status = "ok"
     error_type: str | None = None
+    tracer = trace.get_tracer("gridlens_observability")
+    otel_parent = _otel_parent_context(parent)
+    span_kind = SpanKind.SERVER if name == "http.server" else SpanKind.INTERNAL
     try:
-        yield TraceContext(trace_id=trace_id, span_id=span_id, parent_span_id=parent_span_id)
-    except Exception as exc:
-        status = "error"
-        error_type = exc.__class__.__name__
-        raise
+        with tracer.start_as_current_span(
+            name,
+            context=otel_parent,
+            kind=span_kind,
+        ) as otel_span:
+            otel_context = otel_span.get_span_context()
+            if otel_context != INVALID_SPAN_CONTEXT:
+                trace_id = f"{otel_context.trace_id:032x}"
+                span_id = f"{otel_context.span_id:016x}"
+                reset_context(token)
+                token = bind_context(trace_id=trace_id, span_id=span_id)
+            try:
+                yield TraceContext(
+                    trace_id=trace_id, span_id=span_id, parent_span_id=parent_span_id
+                )
+            except Exception as exc:
+                status = "error"
+                error_type = exc.__class__.__name__
+                raise
+            finally:
+                duration_ms = (perf_counter() - started_at) * 1000
+                merged = current_context_fields()
+                merged.update(attributes)
+                safe = safe_attributes(merged)
+                _annotate_otel_span(otel_span, safe, status=status, error_type=error_type)
+                _trace_exporter.emit(
+                    SpanRecord(
+                        name=name,
+                        trace_id=trace_id,
+                        span_id=span_id,
+                        parent_span_id=parent_span_id,
+                        attributes=safe,
+                        duration_ms=duration_ms,
+                        status=status,
+                        error_type=error_type,
+                        end_time_unix_nano=time_ns(),
+                    )
+                )
     finally:
-        duration_ms = (perf_counter() - started_at) * 1000
-        merged = current_context_fields()
-        merged.update(attributes)
-        _trace_exporter.emit(
-            SpanRecord(
-                name=name,
-                trace_id=trace_id,
-                span_id=span_id,
-                parent_span_id=parent_span_id,
-                attributes=safe_attributes(merged),
-                duration_ms=duration_ms,
-                status=status,
-                error_type=error_type,
-                end_time_unix_nano=time_ns(),
+        reset_context(token)
+
+
+def _annotate_otel_span(
+    span: Span,
+    attributes: dict[str, str | int | float | bool],
+    *,
+    status: str,
+    error_type: str | None,
+) -> None:
+    if not span.is_recording():
+        return
+    for key, value in attributes.items():
+        span.set_attribute(key, value)
+    if status == "error":
+        span.set_status(Status(StatusCode.ERROR, error_type or "error"))
+        if error_type:
+            span.set_attribute("error.type", error_type)
+
+
+def _otel_parent_context(parent: TraceContext | None) -> Context | None:
+    if parent is None or not _is_hex(parent.trace_id, 32) or not _is_hex(parent.span_id, 16):
+        return None
+    return set_span_in_context(
+        NonRecordingSpan(
+            SpanContext(
+                trace_id=int(parent.trace_id, 16),
+                span_id=int(parent.span_id, 16),
+                is_remote=True,
+                trace_flags=TraceFlags(TraceFlags.SAMPLED),
+                trace_state=TraceState(),
             )
         )
-        reset_context(token)
+    )
+
+
+def _is_hex(value: str, length: int) -> bool:
+    if len(value) != length:
+        return False
+    try:
+        int(value, 16)
+    except ValueError:
+        return False
+    return True
 
 
 def _new_id() -> str:
@@ -204,7 +299,9 @@ def _string_attribute(key: str, value: str) -> dict[str, object]:
 
 def _post_json(url: str, payload: dict[str, Any]) -> None:
     body = json.dumps(payload).encode("utf-8")
-    req = request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
+    req = request.Request(
+        url, data=body, headers={"Content-Type": "application/json"}, method="POST"
+    )
     try:
         request.urlopen(req, timeout=0.25).close()
     except OSError:

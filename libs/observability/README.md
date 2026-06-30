@@ -24,8 +24,9 @@ context automatically for HTTP requests and worker jobs.
 
 ## Logs
 
-Use `structured_record` or `json_log_record` for JSON logs. Required fields for
-request logs are:
+Use standard library loggers with `log_extra(...)` for application logs, or
+`structured_record(...)` when constructing structured payloads directly.
+Required fields for request logs are:
 
 - `message`
 - `request_id`
@@ -52,6 +53,10 @@ Worker failure logs must include:
 
 Do not log raw exception messages when they may contain secrets or tenant data.
 Use a user-safe message and keep raw diagnostics out of structured payloads.
+`uvicorn.access` logs are disabled by default because `http_request_completed`
+already captures structured request telemetry. Set
+`UVICORN_ACCESS_LOG_ENABLED=true` to re-enable structured Uvicorn access logs
+for local debugging.
 
 ## Metrics
 
@@ -74,6 +79,8 @@ include service, worker, route template, HTTP method, status code, failure
 category, queue name, model family, and bounded status values. Do not use
 account numbers, meter IDs, prompt text, source records, object keys, signed
 URLs, SQL, or raw tenant payloads as metric labels.
+Local metrics export uses the OpenTelemetry Metrics SDK and the configured OTLP
+collector endpoint; service code should still use only the facade functions.
 
 ## Traces
 

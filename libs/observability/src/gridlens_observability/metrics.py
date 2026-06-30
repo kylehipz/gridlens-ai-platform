@@ -1,9 +1,19 @@
-import json
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from threading import Lock
-from time import time_ns
-from typing import Any, Protocol
-from urllib import request
+from typing import Protocol
+
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+from opentelemetry.metrics import (
+    CallbackOptions,
+    Counter,
+    Histogram,
+    ObservableGauge,
+    Observation,
+)
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.sdk.resources import Resource
 
 from .context import current_context_fields
 from .redaction import safe_attributes
@@ -50,26 +60,79 @@ class InMemoryMetricExporter:
 
 class OtlpMetricExporter:
     def __init__(self, endpoint: str, *, service_name: str) -> None:
-        self.endpoint = endpoint.rstrip("/")
-        self.service_name = service_name
+        reader = PeriodicExportingMetricReader(
+            OTLPMetricExporter(endpoint=f"{endpoint.rstrip('/')}/v1/metrics", timeout=1),
+            export_interval_millis=1000,
+            export_timeout_millis=1000,
+        )
+        self._provider = MeterProvider(
+            metric_readers=[reader],
+            resource=Resource.create({"service.name": service_name}),
+        )
+        self._meter = self._provider.get_meter("gridlens_observability")
+        self._counters: dict[tuple[str, str], Counter] = {}
+        self._histograms: dict[tuple[str, str], Histogram] = {}
+        self._gauges: dict[tuple[str, str], ObservableGauge] = {}
+        self._gauge_values: dict[
+            tuple[str, str], dict[tuple[tuple[str, str | int | float | bool], ...], MetricValue]
+        ] = {}
+        self._lock = Lock()
 
     def emit(self, record: MetricRecord) -> None:
-        payload = {
-            "resourceMetrics": [
-                {
-                    "resource": {
-                        "attributes": [_string_attribute("service.name", self.service_name)]
-                    },
-                    "scopeMetrics": [
-                        {
-                            "scope": {"name": "gridlens_observability"},
-                            "metrics": [_metric_payload(record)],
-                        }
-                    ],
-                }
-            ]
-        }
-        _post_json(f"{self.endpoint}/v1/metrics", payload)
+        unit = record.unit or ""
+        key = (record.name, unit)
+        if record.kind == "counter":
+            self._counter(key).add(record.value, record.attributes)
+        elif record.kind == "histogram":
+            self._histogram(key).record(record.value, record.attributes)
+        elif record.kind == "gauge":
+            self._record_gauge(key, record.value, record.attributes)
+
+    def _counter(self, key: tuple[str, str]) -> Counter:
+        with self._lock:
+            instrument = self._counters.get(key)
+            if instrument is None:
+                name, unit = key
+                instrument = self._meter.create_counter(name, unit=unit)
+                self._counters[key] = instrument
+            return instrument
+
+    def _histogram(self, key: tuple[str, str]) -> Histogram:
+        with self._lock:
+            instrument = self._histograms.get(key)
+            if instrument is None:
+                name, unit = key
+                instrument = self._meter.create_histogram(name, unit=unit)
+                self._histograms[key] = instrument
+            return instrument
+
+    def _record_gauge(
+        self,
+        key: tuple[str, str],
+        value: MetricValue,
+        attributes: dict[str, str | int | float | bool],
+    ) -> None:
+        with self._lock:
+            if key not in self._gauges:
+                name, unit = key
+                self._gauge_values[key] = {}
+                self._gauges[key] = self._meter.create_observable_gauge(
+                    name,
+                    callbacks=[self._gauge_callback(key)],
+                    unit=unit,
+                )
+            self._gauge_values[key][_attribute_key(attributes)] = value
+
+    def _gauge_callback(
+        self, key: tuple[str, str]
+    ) -> Callable[[CallbackOptions], Iterable[Observation]]:
+        def observe(_options: CallbackOptions) -> Iterable[Observation]:
+            with self._lock:
+                values = list(self._gauge_values.get(key, {}).items())
+            for attributes, value in values:
+                yield Observation(value, dict(attributes))
+
+        return observe
 
 
 _metric_exporter: MetricExporter = NoopMetricExporter()
@@ -119,58 +182,7 @@ def _record_metric(
     return record
 
 
-def _metric_payload(record: MetricRecord) -> dict[str, object]:
-    data_point = {
-        "attributes": _attributes(record.attributes),
-        "timeUnixNano": str(time_ns()),
-    }
-    if record.kind == "histogram":
-        data_point.update({"count": "1", "sum": float(record.value)})
-        return {
-            "name": record.name,
-            "unit": record.unit or "",
-            "histogram": {"aggregationTemporality": 2, "dataPoints": [data_point]},
-        }
-    data_point["asDouble"] = float(record.value)
-    if record.kind == "counter":
-        return {
-            "name": record.name,
-            "unit": record.unit or "",
-            "sum": {
-                "aggregationTemporality": 2,
-                "isMonotonic": True,
-                "dataPoints": [data_point],
-            },
-        }
-    return {
-        "name": record.name,
-        "unit": record.unit or "",
-        "gauge": {"dataPoints": [data_point]},
-    }
-
-
-def _attributes(attributes: dict[str, str | int | float | bool]) -> list[dict[str, object]]:
-    return [_attribute(key, value) for key, value in attributes.items()]
-
-
-def _attribute(key: str, value: str | int | float | bool) -> dict[str, object]:
-    if isinstance(value, bool):
-        return {"key": key, "value": {"boolValue": value}}
-    if isinstance(value, int):
-        return {"key": key, "value": {"intValue": str(value)}}
-    if isinstance(value, float):
-        return {"key": key, "value": {"doubleValue": value}}
-    return _string_attribute(key, value)
-
-
-def _string_attribute(key: str, value: str) -> dict[str, object]:
-    return {"key": key, "value": {"stringValue": value}}
-
-
-def _post_json(url: str, payload: dict[str, Any]) -> None:
-    body = json.dumps(payload).encode("utf-8")
-    req = request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
-    try:
-        request.urlopen(req, timeout=0.25).close()
-    except OSError:
-        return None
+def _attribute_key(
+    attributes: dict[str, str | int | float | bool]
+) -> tuple[tuple[str, str | int | float | bool], ...]:
+    return tuple(sorted(attributes.items()))
