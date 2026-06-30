@@ -2,7 +2,7 @@ import logging
 from collections.abc import Awaitable, Callable
 
 import httpx
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from gridlens_observability import (
     InMemoryMetricExporter,
     InMemoryTraceExporter,
@@ -36,8 +36,12 @@ def test_fastapi_middleware_binds_request_context_and_records_signals(caplog) ->
     instrument_fastapi_app(app, service_name="test-service")
 
     @app.get("/health")
-    async def health() -> dict[str, str]:
-        return {"status": "ok"}
+    async def health(request: Request) -> dict[str, str]:
+        return {
+            "status": "ok",
+            "request_id": request.state.request_id,
+            "correlation_id": request.state.correlation_id,
+        }
 
     with caplog.at_level(logging.INFO, logger="gridlens.test-service.http"):
         response = run_request(
@@ -56,6 +60,8 @@ def test_fastapi_middleware_binds_request_context_and_records_signals(caplog) ->
     assert response.status_code == 200
     assert response.headers["X-Request-ID"] == "req_test"
     assert response.headers["X-Correlation-ID"] == "corr_test"
+    assert response.json()["request_id"] == "req_test"
+    assert response.json()["correlation_id"] == "corr_test"
 
     log_record = next(
         record for record in caplog.records if record.getMessage() == "http_request_completed"

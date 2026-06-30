@@ -33,6 +33,9 @@ class ObservabilityASGIMiddleware:
         headers = _headers_from_scope(scope)
         request_id = headers.get(REQUEST_ID_HEADER) or uuid4().hex
         correlation_id = headers.get(CORRELATION_ID_HEADER) or request_id
+        state = scope.setdefault("state", {})
+        state["request_id"] = request_id
+        state["correlation_id"] = correlation_id
         parent = _parent_trace_from_headers(headers)
         method = str(scope.get("method", ""))
         route = str(scope.get("path", ""))

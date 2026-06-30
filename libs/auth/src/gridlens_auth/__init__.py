@@ -1,3 +1,12 @@
+from .fastapi import (
+    AuthenticationASGIMiddleware,
+    AuthorizationDependencyError,
+    install_auth_exception_handlers,
+    install_auth_middleware,
+    principal_from_request,
+    require_platform_roles,
+    require_tenant_roles,
+)
 from .permissions import (
     AuthorizationAuditSink,
     AuthorizationDeniedAuditRecord,
@@ -29,8 +38,10 @@ __all__ = [
     "AuthMode",
     "AuthSettings",
     "AuthenticationError",
+    "AuthenticationASGIMiddleware",
     "AppUserRecord",
     "AuthorizationAuditSink",
+    "AuthorizationDependencyError",
     "AuthorizationDeniedAuditRecord",
     "DevTokenValidator",
     "IdentityRepository",
@@ -43,7 +54,12 @@ __all__ = [
     "TestTokenValidator",
     "bearer_token",
     "has_platform_role",
+    "install_auth_exception_handlers",
+    "install_auth_middleware",
+    "principal_from_request",
     "require_platform_role",
+    "require_platform_roles",
     "require_role",
     "require_tenant_role",
+    "require_tenant_roles",
 ]
