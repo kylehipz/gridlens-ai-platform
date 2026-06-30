@@ -326,9 +326,56 @@ The result should include exactly one `vector` row. With the stack running,
 `make test-local-db` also verifies PostgreSQL connectivity, the `app` schema,
 and the app role's ability to create and drop a smoke-test table.
 
+Schema changes are applied through Alembic, not through PostgreSQL entrypoint
+scripts:
+
+```sh
+make migrate
+```
+
+`make migrate` reads `DATABASE_URL` when set. For host-to-Compose access, use a
+host-reachable URL:
+
+```sh
+DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev make migrate
+```
+
+After migrations, load deterministic synthetic local data:
+
+```sh
+DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev make seed
+```
+
+`make seed` uses SQLAlchemy upserts with fixed UUIDs, so it can be run multiple
+times without duplicate-key failures. The seed set includes `Northwind
+Utilities`, `Cascade Water District`, synthetic users, tenant memberships, file
+object metadata, and audit rows for `tenant.created` and
+`authorization.denied`. One synthetic user belongs to both seeded tenants with
+different roles. Do not replace seed values with real customer data, real
+emails, credentials, production exports, or regulated data.
+
+Tenant-owned tables are protected by initial PostgreSQL RLS policies. Sessions
+must set the tenant context before tenant-scoped reads or writes:
+
+```sql
+select set_config('app.tenant_id', '<tenant_uuid>', true);
+```
+
+Application repositories still filter by tenant explicitly; RLS is a database
+backstop for tenant-owned rows.
+
 PostgreSQL entrypoint scripts only run when the data volume is empty. If you
 change init scripts or role defaults, run `make reset-local-state` before
 starting the stack again.
+
+If you need a fresh schema and seed state during local development, run:
+
+```sh
+make reset-local-state
+make dev
+DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev make migrate
+DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev make seed
+```
 
 ## Managed AWS Development Resources
 
