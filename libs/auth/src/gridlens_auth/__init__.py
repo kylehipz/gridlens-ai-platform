@@ -7,6 +7,7 @@ from .fastapi import (
     require_platform_roles,
     require_tenant_roles,
 )
+from .jwks import HttpJwksVerifier
 from .permissions import (
     AuthorizationAuditSink,
     AuthorizationDeniedAuditRecord,
@@ -45,6 +46,7 @@ __all__ = [
     "AuthorizationDependencyError",
     "AuthorizationDeniedAuditRecord",
     "DevTokenValidator",
+    "HttpJwksVerifier",
     "IdentityRepository",
     "IdentityResolutionError",
     "JwksTokenValidator",

@@ -1,5 +1,7 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+from os import environ
 from typing import Any, Protocol, Self
 
 from gridlens_contracts.roles import PlatformRole, Role
@@ -30,6 +32,22 @@ class AuthSettings:
     @classmethod
     def cognito(cls, *, issuer: str, audience: str, jwks_url: str) -> Self:
         return cls(mode=AuthMode.COGNITO, issuer=issuer, audience=audience, jwks_url=jwks_url)
+
+    @classmethod
+    def from_env(cls, source: Mapping[str, str] | None = None) -> Self:
+        values = environ if source is None else source
+        mode = AuthMode(values.get("AUTH_MODE", AuthMode.COGNITO.value))
+        if mode is AuthMode.TEST:
+            if values.get("GRIDLENS_RUNTIME_MODE") != "test":
+                raise AuthenticationError("Test authentication mode is only available in test runtime.")
+            return cls.test()
+        settings = cls.cognito(
+            issuer=_required(values, "COGNITO_ISSUER"),
+            audience=_required(values, "COGNITO_CLIENT_ID"),
+            jwks_url=_required(values, "COGNITO_JWKS_URL"),
+        )
+        settings.require_cognito_config()
+        return settings
 
     def require_cognito_config(self) -> None:
         missing = [
@@ -170,3 +188,10 @@ class JwksTokenValidator:
 
 
 DevTokenValidator = TestTokenValidator
+
+
+def _required(values: Mapping[str, str], name: str) -> str:
+    value = values.get(name)
+    if not value:
+        raise AuthenticationError(f"Missing required auth configuration: {name}")
+    return value

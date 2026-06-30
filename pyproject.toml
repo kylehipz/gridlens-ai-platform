@@ -16,6 +16,7 @@ dependencies = [
     "opentelemetry-instrumentation-logging>=0.64b0,<1",
     "opentelemetry-sdk>=1.30,<2",
     "psycopg[binary]>=3.2,<4",
+    "PyJWT[crypto]>=2.9,<3",
     "sqlalchemy>=2.0,<3",
     "uvicorn[standard]>=0.32,<1",
 ]

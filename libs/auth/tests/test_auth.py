@@ -68,6 +68,28 @@ class AuthTests(unittest.TestCase):
                 with self.assertRaises(AuthenticationError):
                     bearer_token(header)
 
+    def test_auth_settings_from_env_builds_cognito_settings(self):
+        settings = AuthSettings.from_env(
+            {
+                "AUTH_MODE": "cognito",
+                "COGNITO_ISSUER": "https://issuer.example.test",
+                "COGNITO_CLIENT_ID": "gridlens-client",
+                "COGNITO_JWKS_URL": "https://issuer.example.test/jwks.json",
+            }
+        )
+        self.assertEqual(AuthMode.COGNITO, settings.mode)
+        self.assertEqual("https://issuer.example.test", settings.issuer)
+        self.assertEqual("gridlens-client", settings.audience)
+        self.assertEqual("https://issuer.example.test/jwks.json", settings.jwks_url)
+
+    def test_auth_settings_from_env_rejects_test_mode_outside_test_runtime(self):
+        with self.assertRaises(AuthenticationError):
+            AuthSettings.from_env({"AUTH_MODE": "test", "GRIDLENS_RUNTIME_MODE": "local"})
+        self.assertEqual(
+            AuthMode.TEST,
+            AuthSettings.from_env({"AUTH_MODE": "test", "GRIDLENS_RUNTIME_MODE": "test"}).mode,
+        )
+
     def test_permission_denies_missing_inactive_and_wrong_role(self):
         with self.assertRaises(PermissionDenied):
             require_role(None, {Role.ANALYST})
