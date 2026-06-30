@@ -7,6 +7,7 @@ from .context import (
     current_context_fields,
     reset_context,
 )
+from .fastapi import instrument_fastapi_app
 from .logging import JsonFormatter, configure_json_logging, redact_value, structured_record
 from .metrics import (
     InMemoryMetricExporter,
@@ -48,6 +49,7 @@ __all__ = [
     "extract_trace_context",
     "gauge",
     "histogram",
+    "instrument_fastapi_app",
     "inject_trace_context",
     "redact_value",
     "reset_context",

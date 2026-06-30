@@ -28,6 +28,10 @@ def configure_json_logging(level: int = logging.INFO) -> None:
     root.setLevel(level)
 
 
+def json_log_record(message: str, **fields: Any) -> str:
+    return json.dumps(structured_record(message, **fields), sort_keys=True, separators=(",", ":"))
+
+
 def structured_record(message: str, **fields: Any) -> dict[str, Any]:
     record = current_context_fields()
     record.update({key: redact_field(key, value) for key, value in fields.items()})
@@ -40,6 +44,7 @@ __all__ = [
     "bind_context",
     "clear_context",
     "configure_json_logging",
+    "json_log_record",
     "redact_value",
     "reset_context",
     "structured_record",
