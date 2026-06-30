@@ -12,6 +12,7 @@ from sqlalchemy import (
     Table,
     Text,
     UniqueConstraint,
+    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -61,9 +62,9 @@ app_users = Table(
         "status in ('active', 'invited', 'disabled')",
         name="app_user_status",
     ),
-    UniqueConstraint("email"),
     UniqueConstraint("external_auth_provider", "external_subject"),
 )
+Index("uq_app_users_email_lower", func.lower(app_users.c.email), unique=True)
 
 tenant_memberships = Table(
     "tenant_memberships",
@@ -78,7 +79,7 @@ tenant_memberships = Table(
     Column("created_at", timestamp, nullable=False, server_default=text("now()")),
     Column("updated_at", timestamp, nullable=False, server_default=text("now()")),
     CheckConstraint(
-        "role in ('tenant_admin', 'program_manager', 'analyst', 'viewer')",
+        "role in ('Tenant Admin', 'Analyst', 'Program Manager', 'Auditor', 'Viewer')",
         name="tenant_membership_role",
     ),
     CheckConstraint(
@@ -87,8 +88,13 @@ tenant_memberships = Table(
     ),
     UniqueConstraint("tenant_id", "user_id"),
 )
-Index("ix_tenant_memberships_tenant_id_role", tenant_memberships.c.tenant_id, tenant_memberships.c.role)
-Index("ix_tenant_memberships_user_id", tenant_memberships.c.user_id)
+Index(
+    "ix_tenant_memberships_tenant_id_role_status",
+    tenant_memberships.c.tenant_id,
+    tenant_memberships.c.role,
+    tenant_memberships.c.status,
+)
+Index("ix_tenant_memberships_user_id_status", tenant_memberships.c.user_id, tenant_memberships.c.status)
 
 file_objects = Table(
     "file_objects",
@@ -107,18 +113,37 @@ file_objects = Table(
     Column("created_at", timestamp, nullable=False, server_default=text("now()")),
     Column("updated_at", timestamp, nullable=False, server_default=text("now()")),
     CheckConstraint(
-        "object_purpose in ('dataset_upload', 'assistant_document', 'report_export')",
+        "object_purpose in ("
+        "'dataset_upload', "
+        "'assistant_source', "
+        "'bill_file', "
+        "'generated_report', "
+        "'evidence_package', "
+        "'intermediate_artifact'"
+        ")",
         name="file_object_purpose",
     ),
     CheckConstraint(
-        "storage_status in ('pending', 'available', 'deleted')",
+        "storage_status in ('created', 'uploading', 'available', 'quarantined', 'deleted', 'failed')",
         name="file_object_storage_status",
     ),
     CheckConstraint("file_size_bytes >= 0", name="file_object_size_nonnegative"),
     UniqueConstraint("tenant_id", "storage_bucket", "storage_key"),
 )
-Index("ix_file_objects_tenant_id_created_at", file_objects.c.tenant_id, file_objects.c.created_at)
-Index("ix_file_objects_tenant_id_object_purpose", file_objects.c.tenant_id, file_objects.c.object_purpose)
+Index(
+    "ix_file_objects_tenant_id_object_purpose_created_at",
+    file_objects.c.tenant_id,
+    file_objects.c.object_purpose,
+    file_objects.c.created_at.desc(),
+)
+Index("ix_file_objects_tenant_id_checksum_sha256", file_objects.c.tenant_id, file_objects.c.checksum_sha256)
+Index(
+    "uq_file_objects_tenant_id_checksum_sha256_dataset_upload",
+    file_objects.c.tenant_id,
+    file_objects.c.checksum_sha256,
+    unique=True,
+    postgresql_where=text("checksum_sha256 is not null and object_purpose = 'dataset_upload'"),
+)
 
 audit_logs = Table(
     "audit_logs",

@@ -48,10 +48,11 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.CheckConstraint(
-            "status in ('active', 'suspended', 'archived')", name="ck_tenants_tenant_status"
+            "status in ('active', 'suspended', 'archived')",
+            name=op.f("ck_tenants_tenant_status"),
         ),
-        sa.PrimaryKeyConstraint("id", name="pk_tenants"),
-        sa.UniqueConstraint("slug", name="uq_tenants_slug"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_tenants")),
+        sa.UniqueConstraint("slug", name=op.f("uq_tenants_slug")),
         schema="app",
     )
     op.create_table(
@@ -82,17 +83,18 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.CheckConstraint(
-            "status in ('active', 'invited', 'disabled')", name="ck_app_users_app_user_status"
+            "status in ('active', 'invited', 'disabled')",
+            name=op.f("ck_app_users_app_user_status"),
         ),
-        sa.PrimaryKeyConstraint("id", name="pk_app_users"),
-        sa.UniqueConstraint("email", name="uq_app_users_email"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_app_users")),
         sa.UniqueConstraint(
             "external_auth_provider",
             "external_subject",
-            name="uq_app_users_external_auth_provider_external_subject",
+            name=op.f("uq_app_users_external_auth_provider_external_subject"),
         ),
         schema="app",
     )
+    op.execute("CREATE UNIQUE INDEX uq_app_users_email_lower ON app.app_users (lower(email))")
     op.create_table(
         "tenant_memberships",
         sa.Column(
@@ -122,37 +124,44 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.CheckConstraint(
-            "role in ('tenant_admin', 'program_manager', 'analyst', 'viewer')",
-            name="ck_tenant_memberships_tenant_membership_role",
+            "role in ('Tenant Admin', 'Analyst', 'Program Manager', 'Auditor', 'Viewer')",
+            name=op.f("ck_tenant_memberships_tenant_membership_role"),
         ),
         sa.CheckConstraint(
             "status in ('invited', 'active', 'disabled')",
-            name="ck_tenant_memberships_tenant_membership_status",
+            name=op.f("ck_tenant_memberships_tenant_membership_status"),
         ),
         sa.ForeignKeyConstraint(
             ["tenant_id"],
             ["app.tenants.id"],
-            name="fk_tenant_memberships_tenant_id_tenants",
+            name=op.f("fk_tenant_memberships_tenant_id_tenants"),
             ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["app.app_users.id"],
-            name="fk_tenant_memberships_user_id_app_users",
+            name=op.f("fk_tenant_memberships_user_id_app_users"),
             ondelete="CASCADE",
         ),
-        sa.PrimaryKeyConstraint("id", name="pk_tenant_memberships"),
-        sa.UniqueConstraint("tenant_id", "user_id", name="uq_tenant_memberships_tenant_id_user_id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_tenant_memberships")),
+        sa.UniqueConstraint(
+            "tenant_id",
+            "user_id",
+            name=op.f("uq_tenant_memberships_tenant_id_user_id"),
+        ),
         schema="app",
     )
     op.create_index(
-        "ix_tenant_memberships_tenant_id_role",
+        "ix_tenant_memberships_tenant_id_role_status",
         "tenant_memberships",
-        ["tenant_id", "role"],
+        ["tenant_id", "role", "status"],
         schema="app",
     )
     op.create_index(
-        "ix_tenant_memberships_user_id", "tenant_memberships", ["user_id"], schema="app"
+        "ix_tenant_memberships_user_id_status",
+        "tenant_memberships",
+        ["user_id", "status"],
+        schema="app",
     )
     op.create_table(
         "file_objects",
@@ -190,48 +199,59 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.CheckConstraint(
-            "object_purpose in ('dataset_upload', 'assistant_document', 'report_export')",
-            name="ck_file_objects_file_object_purpose",
+            "object_purpose in ("
+            "'dataset_upload', "
+            "'assistant_source', "
+            "'bill_file', "
+            "'generated_report', "
+            "'evidence_package', "
+            "'intermediate_artifact'"
+            ")",
+            name=op.f("ck_file_objects_file_object_purpose"),
         ),
         sa.CheckConstraint(
-            "storage_status in ('pending', 'available', 'deleted')",
-            name="ck_file_objects_file_object_storage_status",
+            "storage_status in ('created', 'uploading', 'available', 'quarantined', 'deleted', 'failed')",
+            name=op.f("ck_file_objects_file_object_storage_status"),
         ),
         sa.CheckConstraint(
-            "file_size_bytes >= 0", name="ck_file_objects_file_object_size_nonnegative"
+            "file_size_bytes >= 0",
+            name=op.f("ck_file_objects_file_object_size_nonnegative"),
         ),
         sa.ForeignKeyConstraint(
             ["created_by_user_id"],
             ["app.app_users.id"],
-            name="fk_file_objects_created_by_user_id_app_users",
+            name=op.f("fk_file_objects_created_by_user_id_app_users"),
             ondelete="SET NULL",
         ),
         sa.ForeignKeyConstraint(
             ["tenant_id"],
             ["app.tenants.id"],
-            name="fk_file_objects_tenant_id_tenants",
+            name=op.f("fk_file_objects_tenant_id_tenants"),
             ondelete="CASCADE",
         ),
-        sa.PrimaryKeyConstraint("id", name="pk_file_objects"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_file_objects")),
         sa.UniqueConstraint(
             "tenant_id",
             "storage_bucket",
             "storage_key",
-            name="uq_file_objects_tenant_id_storage_bucket_storage_key",
+            name=op.f("uq_file_objects_tenant_id_storage_bucket_storage_key"),
         ),
         schema="app",
     )
-    op.create_index(
-        "ix_file_objects_tenant_id_created_at",
-        "file_objects",
-        ["tenant_id", "created_at"],
-        schema="app",
+    op.execute(
+        "CREATE INDEX ix_file_objects_tenant_id_object_purpose_created_at "
+        "ON app.file_objects (tenant_id, object_purpose, created_at DESC)"
     )
     op.create_index(
-        "ix_file_objects_tenant_id_object_purpose",
+        "ix_file_objects_tenant_id_checksum_sha256",
         "file_objects",
-        ["tenant_id", "object_purpose"],
+        ["tenant_id", "checksum_sha256"],
         schema="app",
+    )
+    op.execute(
+        "CREATE UNIQUE INDEX uq_file_objects_tenant_id_checksum_sha256_dataset_upload "
+        "ON app.file_objects (tenant_id, checksum_sha256) "
+        "WHERE checksum_sha256 IS NOT NULL AND object_purpose = 'dataset_upload'"
     )
     op.create_table(
         "audit_logs",
@@ -264,25 +284,26 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.CheckConstraint(
-            "outcome in ('success', 'denied', 'failure')", name="ck_audit_logs_audit_log_outcome"
+            "outcome in ('success', 'denied', 'failure')",
+            name=op.f("ck_audit_logs_audit_log_outcome"),
         ),
         sa.CheckConstraint(
             "severity in ('debug', 'info', 'warning', 'error')",
-            name="ck_audit_logs_audit_log_severity",
+            name=op.f("ck_audit_logs_audit_log_severity"),
         ),
         sa.ForeignKeyConstraint(
             ["actor_user_id"],
             ["app.app_users.id"],
-            name="fk_audit_logs_actor_user_id_app_users",
+            name=op.f("fk_audit_logs_actor_user_id_app_users"),
             ondelete="SET NULL",
         ),
         sa.ForeignKeyConstraint(
             ["tenant_id"],
             ["app.tenants.id"],
-            name="fk_audit_logs_tenant_id_tenants",
+            name=op.f("fk_audit_logs_tenant_id_tenants"),
             ondelete="CASCADE",
         ),
-        sa.PrimaryKeyConstraint("id", name="pk_audit_logs"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_audit_logs")),
         schema="app",
     )
     op.create_index(
@@ -301,14 +322,28 @@ def downgrade() -> None:
     op.drop_index("ix_audit_logs_tenant_id_action", table_name="audit_logs", schema="app")
     op.drop_table("audit_logs", schema="app")
     op.drop_index(
-        "ix_file_objects_tenant_id_object_purpose", table_name="file_objects", schema="app"
+        "uq_file_objects_tenant_id_checksum_sha256_dataset_upload",
+        table_name="file_objects",
+        schema="app",
     )
-    op.drop_index("ix_file_objects_tenant_id_created_at", table_name="file_objects", schema="app")
-    op.drop_table("file_objects", schema="app")
-    op.drop_index("ix_tenant_memberships_user_id", table_name="tenant_memberships", schema="app")
     op.drop_index(
-        "ix_tenant_memberships_tenant_id_role", table_name="tenant_memberships", schema="app"
+        "ix_file_objects_tenant_id_checksum_sha256", table_name="file_objects", schema="app"
+    )
+    op.drop_index(
+        "ix_file_objects_tenant_id_object_purpose_created_at",
+        table_name="file_objects",
+        schema="app",
+    )
+    op.drop_table("file_objects", schema="app")
+    op.drop_index(
+        "ix_tenant_memberships_user_id_status", table_name="tenant_memberships", schema="app"
+    )
+    op.drop_index(
+        "ix_tenant_memberships_tenant_id_role_status",
+        table_name="tenant_memberships",
+        schema="app",
     )
     op.drop_table("tenant_memberships", schema="app")
+    op.drop_index("uq_app_users_email_lower", table_name="app_users", schema="app")
     op.drop_table("app_users", schema="app")
     op.drop_table("tenants", schema="app")

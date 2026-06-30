@@ -356,18 +356,17 @@ object metadata, and audit rows for `tenant.created` and
 different roles. Do not replace seed values with real customer data, real
 emails, credentials, production exports, or regulated data.
 
-Tenant-scoped operational tables are protected by initial PostgreSQL RLS
-policies. Sessions must set the tenant context before tenant-scoped reads or
-writes to RLS-protected tables:
+Tenant-owned tables are protected by initial PostgreSQL RLS policies. Sessions
+must set the tenant context before tenant-scoped reads or writes to
+RLS-protected tables:
 
 ```sql
 select set_config('app.tenant_id', '<tenant_uuid>', true);
 ```
 
-Tenants and tenant memberships are not protected by tenant-context RLS because
-tenant onboarding and workspace discovery must run before an active tenant is
-selected. Application repositories still filter and authorize those tables
-explicitly; RLS remains a database backstop for tenant-owned operational rows.
+The initial RLS policy set covers tenants, tenant memberships, file metadata,
+and audit logs. Application repositories still filter and authorize those
+tables explicitly; RLS remains a database backstop for tenant-owned rows.
 
 PostgreSQL SQL init scripts only run when the data volume is empty. If you
 change init SQL scripts or role defaults, run `make reset-local-state` before

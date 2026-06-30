@@ -66,28 +66,28 @@ MEMBERSHIP_ROWS: list[dict[str, Any]] = [
         "id": UUID("30000000-0000-4000-8000-000000000001"),
         "tenant_id": NORTHWIND_TENANT_ID,
         "user_id": JORDAN_USER_ID,
-        "role": "tenant_admin",
+        "role": "Tenant Admin",
         "status": "active",
     },
     {
         "id": UUID("30000000-0000-4000-8000-000000000002"),
         "tenant_id": CASCADE_TENANT_ID,
         "user_id": JORDAN_USER_ID,
-        "role": "analyst",
+        "role": "Analyst",
         "status": "active",
     },
     {
         "id": UUID("30000000-0000-4000-8000-000000000003"),
         "tenant_id": NORTHWIND_TENANT_ID,
         "user_id": PRIYA_USER_ID,
-        "role": "program_manager",
+        "role": "Program Manager",
         "status": "active",
     },
     {
         "id": UUID("30000000-0000-4000-8000-000000000004"),
         "tenant_id": CASCADE_TENANT_ID,
         "user_id": MARCUS_USER_ID,
-        "role": "viewer",
+        "role": "Viewer",
         "status": "active",
     },
 ]
@@ -110,7 +110,7 @@ FILE_OBJECT_ROWS: list[dict[str, Any]] = [
         "id": UUID("40000000-0000-4000-8000-000000000002"),
         "tenant_id": CASCADE_TENANT_ID,
         "created_by_user_id": MARCUS_USER_ID,
-        "object_purpose": "assistant_document",
+        "object_purpose": "assistant_source",
         "original_file_name": "cascade-program-guide.pdf",
         "content_type": "application/pdf",
         "storage_bucket": "gridlens-dev-artifacts",
@@ -189,19 +189,24 @@ def _set_tenant(connection: Any, tenant_id: UUID) -> None:
     connection.execute(text("select set_config('app.tenant_id', :tenant_id, true)"), {"tenant_id": str(tenant_id)})
 
 
-def _seed_tenant_owned_rows(connection: Any, table: Table, rows: Sequence[Mapping[str, Any]]) -> None:
-    for tenant_id in sorted({row["tenant_id"] for row in rows}, key=str):
+def _seed_tenant_owned_rows(
+    connection: Any,
+    table: Table,
+    rows: Sequence[Mapping[str, Any]],
+    tenant_key: str = "tenant_id",
+) -> None:
+    for tenant_id in sorted({row[tenant_key] for row in rows}, key=str):
         _set_tenant(connection, tenant_id)
-        tenant_rows = [row for row in rows if row["tenant_id"] == tenant_id]
+        tenant_rows = [row for row in rows if row[tenant_key] == tenant_id]
         _upsert_rows(connection, table, tenant_rows, ["id"])
 
 
 def seed_database() -> None:
     engine = create_database_engine()
     with engine.begin() as connection:
-        _upsert_rows(connection, tenants, TENANT_ROWS, ["id"])
         _upsert_rows(connection, app_users, USER_ROWS, ["id"])
-        _upsert_rows(connection, tenant_memberships, MEMBERSHIP_ROWS, ["id"])
+        _seed_tenant_owned_rows(connection, tenants, TENANT_ROWS, tenant_key="id")
+        _seed_tenant_owned_rows(connection, tenant_memberships, MEMBERSHIP_ROWS)
         _seed_tenant_owned_rows(connection, file_objects, FILE_OBJECT_ROWS)
         _seed_tenant_owned_rows(connection, audit_logs, AUDIT_LOG_ROWS)
 

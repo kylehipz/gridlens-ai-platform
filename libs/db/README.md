@@ -28,12 +28,11 @@ The T07 baseline schema creates:
 - `app.file_objects`
 - `app.audit_logs`
 
-`app_users`, `tenants`, and `tenant_memberships` are identity/control-plane
-metadata. Tenant and membership access is enforced in repository and service
-authorization logic so onboarding and workspace discovery can run before an
-active tenant context exists. File objects and audit logs are tenant-scoped
-operational records protected by initial PostgreSQL RLS policies that read the
-`app.tenant_id` session setting.
+`app_users` is global identity metadata. `tenants`, `tenant_memberships`,
+`file_objects`, and `audit_logs` are protected by initial PostgreSQL RLS
+policies that read the `app.tenant_id` session setting. Application
+repositories still filter and authorize tenant access explicitly; RLS is the
+database backstop.
 
 ## Seed Data
 
@@ -53,8 +52,8 @@ emails, credentials, regulated data, or production exports.
 
 ## Tenant Session Settings
 
-Tenant-scoped operational queries must set the tenant context before reading or
-writing RLS-protected rows:
+Tenant-scoped queries must set the tenant context before reading or writing
+RLS-protected rows:
 
 ```sql
 select set_config('app.tenant_id', '<tenant_uuid>', true);

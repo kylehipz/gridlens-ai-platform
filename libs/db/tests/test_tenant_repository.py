@@ -5,7 +5,14 @@ from importlib import import_module
 from uuid import UUID
 
 from gridlens_db import FileObjectRepository, TenantMembershipRepository, TenantScopedRepository
-from gridlens_db.models import audit_logs, file_objects, metadata, tenant_memberships, tenants
+from gridlens_db.models import (
+    app_users,
+    audit_logs,
+    file_objects,
+    metadata,
+    tenant_memberships,
+    tenants,
+)
 from gridlens_db.seed import (
     CASCADE_TENANT_ID,
     JORDAN_USER_ID,
@@ -100,13 +107,13 @@ class TenantRepositoryTests(unittest.TestCase):
                     "id": UUID("30000000-0000-4000-8000-000000000001"),
                     "tenant_id": NORTHWIND_TENANT_ID,
                     "user_id": JORDAN_USER_ID,
-                    "role": "tenant_admin",
+                    "role": "Tenant Admin",
                     "status": "active",
                 }
             ]
         )
         records = TenantMembershipRepository(session).list_for_tenant(NORTHWIND_TENANT_ID)
-        self.assertEqual(["tenant_admin"], [record.role for record in records])
+        self.assertEqual(["Tenant Admin"], [record.role for record in records])
         self.assertEqual(NORTHWIND_TENANT_ID, records[0].tenant_id)
 
     def test_file_object_repository_filters_lookup_by_tenant(self):
@@ -183,8 +190,24 @@ class SchemaMetadataTests(unittest.TestCase):
         self.assertIn(("tenant_id", "user_id"), unique_columns)
 
     def test_recommended_indexes_are_registered(self):
-        self.assertIn("ix_tenant_memberships_tenant_id_role", {index.name for index in tenant_memberships.indexes})
-        self.assertIn("ix_file_objects_tenant_id_created_at", {index.name for index in file_objects.indexes})
+        self.assertIn("uq_app_users_email_lower", {index.name for index in app_users.indexes})
+        self.assertIn(
+            "ix_tenant_memberships_tenant_id_role_status",
+            {index.name for index in tenant_memberships.indexes},
+        )
+        self.assertIn(
+            "ix_tenant_memberships_user_id_status",
+            {index.name for index in tenant_memberships.indexes},
+        )
+        self.assertIn(
+            "ix_file_objects_tenant_id_object_purpose_created_at",
+            {index.name for index in file_objects.indexes},
+        )
+        self.assertIn("ix_file_objects_tenant_id_checksum_sha256", {index.name for index in file_objects.indexes})
+        self.assertIn(
+            "uq_file_objects_tenant_id_checksum_sha256_dataset_upload",
+            {index.name for index in file_objects.indexes},
+        )
         self.assertIn("ix_audit_logs_tenant_id_action", {index.name for index in audit_logs.indexes})
 
     def test_lookup_statements_include_tenant_predicates(self):
@@ -210,15 +233,17 @@ class SchemaMetadataTests(unittest.TestCase):
         }
         self.assertEqual(
             {
-                NORTHWIND_TENANT_ID: "tenant_admin",
-                CASCADE_TENANT_ID: "analyst",
+                NORTHWIND_TENANT_ID: "Tenant Admin",
+                CASCADE_TENANT_ID: "Analyst",
             },
             jordan_roles,
         )
 
-    def test_initial_rls_only_protects_tenant_owned_operational_tables(self):
+    def test_initial_rls_protects_tenant_owned_tables(self):
         self.assertEqual(
             {
+                "tenants": "id",
+                "tenant_memberships": "tenant_id",
                 "file_objects": "tenant_id",
                 "audit_logs": "tenant_id",
             },
