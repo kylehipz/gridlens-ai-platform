@@ -1,9 +1,16 @@
-from fastapi.testclient import TestClient
+import asyncio
+
+import httpx
 from gridlens_program_evaluation_service.main import app
 
 
 def test_health_response_body() -> None:
-    response = TestClient(app).get("/health")
+    async def run() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.get("/health")
+
+    response = asyncio.run(run())
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "service": "program-evaluation-service"}

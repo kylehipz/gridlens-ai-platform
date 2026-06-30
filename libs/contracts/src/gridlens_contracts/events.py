@@ -27,11 +27,14 @@ class EventEnvelope:
     actor: ActorContext
     source_resource_ids: dict[str, str]
     payload: dict[str, Any]
+    request_id: str | None = None
+    trace_id: str | None = None
+    span_id: str | None = None
     retry: RetryMetadata = field(default_factory=RetryMetadata)
     occurred_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "event_type": self.event_type,
             "event_version": self.event_version,
             "tenant_id": self.tenant_id,
@@ -50,3 +53,10 @@ class EventEnvelope:
             },
             "occurred_at": self.occurred_at.isoformat(),
         }
+        if self.request_id:
+            payload["request_id"] = self.request_id
+        if self.trace_id:
+            payload["trace_id"] = self.trace_id
+        if self.span_id:
+            payload["span_id"] = self.span_id
+        return payload

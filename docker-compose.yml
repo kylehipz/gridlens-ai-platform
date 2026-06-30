@@ -16,6 +16,13 @@ x-api-environment: &api-environment
   SQS_QUEUE_URL: ${SQS_QUEUE_URL:-https://sqs.ap-southeast-1.amazonaws.com/000000000000/gridlens-dev-jobs}
   BEDROCK_TEXT_MODEL_ID: ${BEDROCK_TEXT_MODEL_ID:-anthropic.claude-3-haiku-20240307-v1:0}
   BEDROCK_EMBEDDING_MODEL_ID: ${BEDROCK_EMBEDDING_MODEL_ID:-amazon.titan-embed-text-v2:0}
+  OBSERVABILITY_MODE: ${OBSERVABILITY_MODE:-local}
+  LOG_EXPORTER: ${LOG_EXPORTER:-loki}
+  METRICS_EXPORTER: ${METRICS_EXPORTER:-prometheus}
+  TRACES_EXPORTER: ${TRACES_EXPORTER:-tempo}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+  OBSERVABILITY_SMOKE_ROUTES_ENABLED: ${OBSERVABILITY_SMOKE_ROUTES_ENABLED:-true}
+  UVICORN_ACCESS_LOG_ENABLED: ${UVICORN_ACCESS_LOG_ENABLED:-false}
 
 x-worker-environment: &worker-environment
   APP_ENV: ${APP_ENV:-local}
@@ -29,6 +36,13 @@ x-worker-environment: &worker-environment
   SQS_QUEUE_URL: ${SQS_QUEUE_URL:-https://sqs.ap-southeast-1.amazonaws.com/000000000000/gridlens-dev-jobs}
   BEDROCK_TEXT_MODEL_ID: ${BEDROCK_TEXT_MODEL_ID:-anthropic.claude-3-haiku-20240307-v1:0}
   BEDROCK_EMBEDDING_MODEL_ID: ${BEDROCK_EMBEDDING_MODEL_ID:-amazon.titan-embed-text-v2:0}
+  OBSERVABILITY_MODE: ${OBSERVABILITY_MODE:-local}
+  LOG_EXPORTER: ${LOG_EXPORTER:-loki}
+  METRICS_EXPORTER: ${METRICS_EXPORTER:-prometheus}
+  TRACES_EXPORTER: ${TRACES_EXPORTER:-tempo}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+  OBSERVABILITY_SMOKE_ROUTES_ENABLED: ${OBSERVABILITY_SMOKE_ROUTES_ENABLED:-true}
+  UVICORN_ACCESS_LOG_ENABLED: ${UVICORN_ACCESS_LOG_ENABLED:-false}
 
 x-api-healthcheck: &api-healthcheck
   test:
@@ -269,8 +283,82 @@ services:
     networks:
       - gridlens-local
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.116.1
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./infra/local/observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    ports:
+      - "127.0.0.1:${OTEL_HTTP_PORT:-4318}:4318"
+    networks:
+      - gridlens-local
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    volumes:
+      - ./infra/local/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - gridlens-local
+
+  loki:
+    image: grafana/loki:3.3.2
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    volumes:
+      - ./infra/local/observability/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "127.0.0.1:${LOKI_PORT:-3100}:3100"
+    networks:
+      - gridlens-local
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    user: "0:0"
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./infra/local/observability/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/tmp/tempo
+    ports:
+      - "127.0.0.1:${TEMPO_PORT:-3200}:3200"
+    networks:
+      - gridlens-local
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-gridlens}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-gridlens_local}
+    volumes:
+      - ./infra/local/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/local/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    networks:
+      - gridlens-local
+
 volumes:
   postgres-data:
+  prometheus-data:
+  loki-data:
+  tempo-data:
+  grafana-data:
 
 networks:
   gridlens-local:

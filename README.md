@@ -52,6 +52,7 @@ mock values only.
 | `make run-frontend` | Start the Vite frontend development server. |
 | `make down` | Stop the local Compose stack while preserving named volumes. |
 | `make reset-local-state` | Stop the stack and remove named local volumes so database init scripts rerun on next start. |
+| `make purge` | Stop the full development Compose stack and remove containers, named volumes, orphans, and locally built images. |
 | `make test` | Run the default offline repository test targets. |
 | `make test-backend` | Run all configured Python tests with pytest. |
 | `make test-contracts` | Run shared contract tests with pytest. |

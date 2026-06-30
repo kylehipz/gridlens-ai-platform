@@ -11,3 +11,13 @@ services:
         methods:
           - GET
         strip_path: true
+
+  - name: gridlens-observability-upstream
+    url: http://identity-tenant-service:8000
+    routes:
+      - name: gridlens-observability-smoke
+        paths:
+          - /__observability
+        methods:
+          - GET
+        strip_path: false

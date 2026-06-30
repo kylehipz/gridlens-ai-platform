@@ -57,3 +57,28 @@ Use this request shape:
 ```
 
 Prefer collection variables for values shared across workflows. Prefer environment variables for deployment-specific values and secrets. Never commit real secrets.
+
+Use this local environment shape:
+
+```json
+{
+  "name": "Service Local",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "secret",
+      "enabled": true,
+      "description": "Bearer JWT access token for authenticated API requests."
+    }
+  ]
+}
+```
+
+For every variable used by changed requests, add a matching environment value when the repository maintains Postman environments. Use documented local defaults from `.env.example`, Compose files, Makefile targets, or local development docs. If no safe default exists, leave `value` empty and add a concise `description` explaining what belongs there. Use `type: "secret"` for credentials, tokens, API keys, passwords, or other sensitive values.

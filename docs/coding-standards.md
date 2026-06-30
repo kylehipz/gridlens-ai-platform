@@ -137,6 +137,11 @@ validation failures, evaluation runs, retrieval quality signals, export
 activity, and AI usage or cost drivers. Redact sensitive values before logs,
 metrics, traces, or exceptions leave the service boundary.
 
+Backend services and workers should call `gridlens_observability` helpers rather
+than backend-specific telemetry SDKs directly. Required signal fields, standard
+metric names, span naming, local exporter settings, production exporter
+settings, and redaction rules are maintained in `libs/observability/README.md`.
+
 ## AI and RAG Safety
 
 AI features are governed product behavior, not generic chat. Retrieval,

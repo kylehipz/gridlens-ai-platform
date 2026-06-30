@@ -26,6 +26,9 @@ def build_event(
     actor: ActorContext,
     source_resource_ids: dict[str, str],
     payload: dict,
+    request_id: str | None = None,
+    trace_id: str | None = None,
+    span_id: str | None = None,
     attempt_number: int = 1,
 ) -> EventEnvelope:
     source_id = event_source_id(source_resource_ids)
@@ -40,17 +43,42 @@ def build_event(
         actor=actor,
         source_resource_ids=source_resource_ids,
         payload=payload,
+        request_id=request_id,
+        trace_id=trace_id,
+        span_id=span_id,
         retry=RetryMetadata(attempt_number=attempt_number),
     )
 
 
 def to_queue_message(event: EventEnvelope) -> dict[str, object]:
     payload = event.to_dict()
+    attributes = {
+        "tenant_id": {"DataType": "String", "StringValue": event.tenant_id},
+        "correlation_id": {"DataType": "String", "StringValue": event.correlation_id},
+        "idempotency_key": {"DataType": "String", "StringValue": event.idempotency_key},
+    }
+    if event.request_id:
+        attributes["request_id"] = {"DataType": "String", "StringValue": event.request_id}
+    if event.trace_id:
+        attributes["trace_id"] = {"DataType": "String", "StringValue": event.trace_id}
+    if event.span_id:
+        attributes["span_id"] = {"DataType": "String", "StringValue": event.span_id}
     return {
         "MessageBody": json.dumps(payload, sort_keys=True),
-        "MessageAttributes": {
-            "tenant_id": {"DataType": "String", "StringValue": event.tenant_id},
-            "correlation_id": {"DataType": "String", "StringValue": event.correlation_id},
-            "idempotency_key": {"DataType": "String", "StringValue": event.idempotency_key},
-        },
+        "MessageAttributes": attributes,
     }
+
+
+def queue_message_attributes(event: EventEnvelope) -> dict[str, str]:
+    attributes = {
+        "tenant_id": event.tenant_id,
+        "correlation_id": event.correlation_id,
+        "idempotency_key": event.idempotency_key,
+    }
+    if event.request_id:
+        attributes["request_id"] = event.request_id
+    if event.trace_id:
+        attributes["trace_id"] = event.trace_id
+    if event.span_id:
+        attributes["span_id"] = event.span_id
+    return attributes

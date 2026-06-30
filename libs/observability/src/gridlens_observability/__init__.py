@@ -1,3 +1,87 @@
-from .logging import bind_context, redact_value, structured_record
+from .config import ObservabilitySettings, settings_from_env
+from .context import (
+    ObservabilityContext,
+    bind_context,
+    clear_context,
+    current_context,
+    current_context_fields,
+    reset_context,
+)
+from .fastapi import instrument_fastapi_app
+from .logging import (
+    JsonFormatter,
+    configure_json_logging,
+    configure_otel_logging,
+    is_gridlens_json_handler,
+    is_gridlens_otel_handler,
+    log_extra,
+    redact_value,
+    structured_record,
+)
+from .metrics import (
+    InMemoryMetricExporter,
+    MetricRecord,
+    NoopMetricExporter,
+    OtlpMetricExporter,
+    configure_otel_metrics,
+    counter,
+    gauge,
+    histogram,
+    set_metric_exporter,
+)
+from .setup import configure_observability
+from .tracing import (
+    InMemoryTraceExporter,
+    NoopTraceExporter,
+    OtlpTraceExporter,
+    SpanRecord,
+    TraceContext,
+    configure_otel_tracing,
+    extract_trace_context,
+    inject_trace_context,
+    set_trace_exporter,
+    start_span,
+)
+from .worker import WorkerMessageContext, observe_worker_job
 
-__all__ = ["bind_context", "redact_value", "structured_record"]
+__all__ = [
+    "InMemoryMetricExporter",
+    "InMemoryTraceExporter",
+    "JsonFormatter",
+    "MetricRecord",
+    "NoopMetricExporter",
+    "NoopTraceExporter",
+    "OtlpMetricExporter",
+    "OtlpTraceExporter",
+    "ObservabilityContext",
+    "ObservabilitySettings",
+    "SpanRecord",
+    "TraceContext",
+    "WorkerMessageContext",
+    "bind_context",
+    "clear_context",
+    "configure_json_logging",
+    "configure_otel_metrics",
+    "configure_otel_logging",
+    "configure_otel_tracing",
+    "configure_observability",
+    "counter",
+    "current_context",
+    "current_context_fields",
+    "extract_trace_context",
+    "gauge",
+    "histogram",
+    "instrument_fastapi_app",
+    "inject_trace_context",
+    "is_gridlens_json_handler",
+    "is_gridlens_otel_handler",
+    "log_extra",
+    "redact_value",
+    "reset_context",
+    "set_metric_exporter",
+    "set_trace_exporter",
+    "settings_from_env",
+    "start_span",
+    "structured_record",
+    "observe_worker_job",
+]
