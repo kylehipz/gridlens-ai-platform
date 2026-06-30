@@ -8,7 +8,13 @@ from .context import (
     reset_context,
 )
 from .fastapi import instrument_fastapi_app
-from .logging import JsonFormatter, configure_json_logging, redact_value, structured_record
+from .logging import (
+    JsonFormatter,
+    configure_json_logging,
+    json_log_record,
+    redact_value,
+    structured_record,
+)
 from .metrics import (
     InMemoryMetricExporter,
     MetricRecord,
@@ -52,6 +58,7 @@ __all__ = [
     "gauge",
     "histogram",
     "instrument_fastapi_app",
+    "json_log_record",
     "inject_trace_context",
     "redact_value",
     "reset_context",

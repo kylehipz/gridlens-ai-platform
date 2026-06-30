@@ -65,6 +65,8 @@ def observe_worker_job(
     bind_context(
         request_id=request_id,
         correlation_id=correlation_id,
+        trace_id=trace_id,
+        span_id=span_id,
         tenant_id=tenant_id,
         service=service_name,
         worker=worker_name,
@@ -72,13 +74,19 @@ def observe_worker_job(
     )
     started_at = perf_counter()
     status = "success"
+    active_span: TraceContext | None = None
     try:
         logger.info(json_log_record("worker_job_started"))
-        with start_span("worker.consume", parent=message_context.trace_context(), worker=worker_name):
+        with start_span("worker.consume", parent=message_context.trace_context(), worker=worker_name) as span:
+            active_span = span
             yield message_context
+        if active_span:
+            bind_context(trace_id=active_span.trace_id, span_id=active_span.span_id)
         logger.info(json_log_record("worker_job_succeeded"))
     except Exception as exc:
         status = "failure"
+        if active_span:
+            bind_context(trace_id=active_span.trace_id, span_id=active_span.span_id)
         counter(
             "gridlens.worker.job.errors",
             service=service_name,
