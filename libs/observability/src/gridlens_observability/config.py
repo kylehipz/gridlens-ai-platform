@@ -52,9 +52,10 @@ def _defaults_for_mode(mode: str) -> ObservabilitySettings:
     if mode == "production":
         return ObservabilitySettings(
             mode=mode,
-            log_exporter="cloudwatch-logs",
-            metrics_exporter="cloudwatch",
-            traces_exporter="xray",
+            log_exporter="stdout",
+            metrics_exporter="otlp",
+            traces_exporter="otlp",
+            otlp_endpoint="http://localhost:4318",
         )
     return ObservabilitySettings(mode=mode)
 

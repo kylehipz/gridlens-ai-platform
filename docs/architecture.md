@@ -139,7 +139,7 @@ access keys.
 Local observability runs through Prometheus, Loki, Tempo, Grafana, and an OTLP
 collector defined under `infra/local/observability/`. Production observability
 uses the same application helper calls with exporter configuration pointed at
-CloudWatch metrics, CloudWatch Logs, and X-Ray, as documented in
+stdout logs plus OTLP metrics/traces for an ECS ADOT sidecar, as documented in
 `docs/production-observability.md`.
 
 Each deployable service should provide a Dockerfile `dev` stage that installs

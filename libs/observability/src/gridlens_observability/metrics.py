@@ -80,6 +80,10 @@ def set_metric_exporter(exporter: MetricExporter) -> None:
     _metric_exporter = exporter
 
 
+def configure_otel_metrics(*, endpoint: str, service_name: str) -> None:
+    set_metric_exporter(OtlpMetricExporter(endpoint, service_name=service_name))
+
+
 def counter(name: str, value: MetricValue = 1, **attributes: object) -> MetricRecord:
     return _record_metric(name=name, value=value, kind="counter", unit=None, attributes=attributes)
 

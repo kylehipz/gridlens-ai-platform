@@ -251,9 +251,10 @@ class ObservabilityTests(unittest.TestCase):
         self.assertEqual("tempo", local.traces_exporter)
 
         production = settings_from_env({"OBSERVABILITY_MODE": "production"})
-        self.assertEqual("cloudwatch", production.metrics_exporter)
-        self.assertEqual("cloudwatch-logs", production.log_exporter)
-        self.assertEqual("xray", production.traces_exporter)
+        self.assertEqual("otlp", production.metrics_exporter)
+        self.assertEqual("stdout", production.log_exporter)
+        self.assertEqual("otlp", production.traces_exporter)
+        self.assertEqual("http://localhost:4318", production.otlp_endpoint)
 
         test = settings_from_env({"OBSERVABILITY_MODE": "test"})
         self.assertEqual("noop", test.metrics_exporter)

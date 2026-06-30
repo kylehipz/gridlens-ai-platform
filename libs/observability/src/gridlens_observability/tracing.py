@@ -110,6 +110,10 @@ def set_trace_exporter(exporter: TraceExporter) -> None:
     _trace_exporter = exporter
 
 
+def configure_otel_tracing(*, endpoint: str, service_name: str) -> None:
+    set_trace_exporter(OtlpTraceExporter(endpoint, service_name=service_name))
+
+
 def extract_trace_context(carrier: dict[str, str] | None) -> TraceContext | None:
     if not carrier:
         return None

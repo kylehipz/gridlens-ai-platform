@@ -111,8 +111,8 @@ Exporter selection is environment-driven through `settings_from_env`:
 - `OBSERVABILITY_MODE=test`: no-op or in-memory exporters for offline tests.
 - `OBSERVABILITY_MODE=local`: Prometheus, Loki, Tempo, and Grafana through the
   local OTLP collector.
-- `OBSERVABILITY_MODE=production`: CloudWatch metrics, CloudWatch Logs, and
-  X-Ray through deployment configuration.
+- `OBSERVABILITY_MODE=production`: JSON logs to stdout for the ECS `awslogs`
+  driver, with OTLP metrics and traces sent to the ADOT sidecar.
 
 The local stack is documented in `docs/local-development.md`. Production
 settings are documented in `docs/production-observability.md` and
