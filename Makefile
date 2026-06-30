@@ -3,6 +3,7 @@ SYSTEM_PYTHON ?= python3
 PYTEST ?= $(PYTHON) -m pytest
 RUFF ?= $(PYTHON) -m ruff
 PYRIGHT ?= $(PYTHON) -m pyright
+ALEMBIC ?= PYTHONPATH=libs/db/src $(PYTHON) -m alembic
 COMPOSE ?= docker compose
 NPM ?= npm
 COMPOSE_BASE := -f docker-compose.yml
@@ -136,7 +137,7 @@ format:
 	@printf '%s\n' 'No formatter is configured yet. Future Python and frontend formatters should run here.'
 
 migrate:
-	@printf '%s\n' 'No database migrations exist yet. Local PostgreSQL bootstrap runs only on an empty data volume.'
+	$(ALEMBIC) -c infra/db/alembic.ini upgrade head
 
 seed:
-	@printf '%s\n' 'No seed data task exists yet. Future tasks must use synthetic development data only.'
+	PYTHONPATH=libs/db/src $(PYTHON) -m gridlens_db.seed
