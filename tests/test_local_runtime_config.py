@@ -97,6 +97,19 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertIn("name: gridlens-observability-upstream", kong_config)
         self.assertIn("url: http://identity-tenant-service:8000", kong_config)
         self.assertIn("/__observability", kong_config)
+        self.assertIn("name: gridlens-identity-tenant-upstream", kong_config)
+        self.assertIn("/api/v1/me", kong_config)
+        self.assertIn(
+            "~^/api/v1/tenants(?:/[^/]+)?(?:/(?:settings|members|invitations)(?:/.*)?)?$",
+            kong_config,
+        )
+        self.assertIn("name: gridlens-data-operations-upstream", kong_config)
+        self.assertIn("url: http://data-operations-service:8000", kong_config)
+        self.assertIn(
+            "~^/api/v1/tenants/[^/]+/(files|datasets|ingestion-sources|ingestion-jobs)(/|$)",
+            kong_config,
+        )
+        self.assertIn("strip_path: false", kong_config)
         self.assertNotIn("/metrics", kong_config)
 
     def test_compose_starts_scaffold_services_and_workers(self) -> None:

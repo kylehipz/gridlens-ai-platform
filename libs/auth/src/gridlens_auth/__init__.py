@@ -31,6 +31,7 @@ from .tokens import (
     JwksTokenValidator,
     Principal,
     TestTokenValidator,
+    TokenValidator,
     bearer_token,
 )
 
@@ -52,6 +53,7 @@ __all__ = [
     "PrincipalResolver",
     "TenantMembershipRecord",
     "TestTokenValidator",
+    "TokenValidator",
     "bearer_token",
     "has_platform_role",
     "install_auth_exception_handlers",
