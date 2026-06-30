@@ -139,6 +139,11 @@ class ObservabilityTests(unittest.TestCase):
         self.assertEqual("cloudwatch-logs", production.log_exporter)
         self.assertEqual("xray", production.traces_exporter)
 
+        test = settings_from_env({"OBSERVABILITY_MODE": "test"})
+        self.assertEqual("noop", test.metrics_exporter)
+        self.assertEqual("stdout", test.log_exporter)
+        self.assertEqual("noop", test.traces_exporter)
+
 
 if __name__ == "__main__":
     unittest.main()
