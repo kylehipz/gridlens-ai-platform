@@ -21,6 +21,14 @@ WORKER_SERVICES = [
     "insights-reporting-worker",
 ]
 
+OBSERVABILITY_SERVICES = [
+    "otel-collector",
+    "prometheus",
+    "loki",
+    "tempo",
+    "grafana",
+]
+
 
 class LocalRuntimeConfigTests(TestCase):
     def test_env_example_uses_managed_aws_placeholders_not_emulators(self) -> None:
@@ -51,6 +59,11 @@ class LocalRuntimeConfigTests(TestCase):
         expected_bindings = [
             "127.0.0.1:${POSTGRES_PORT:-5432}:5432",
             "127.0.0.1:${API_HOST_PORT:-8000}:8000",
+            "127.0.0.1:${OTEL_HTTP_PORT:-4318}:4318",
+            "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090",
+            "127.0.0.1:${LOKI_PORT:-3100}:3100",
+            "127.0.0.1:${TEMPO_PORT:-3200}:3200",
+            "127.0.0.1:${GRAFANA_PORT:-3000}:3000",
         ]
 
         merged_compose = f"{compose}\n{dev_compose}"
@@ -104,6 +117,50 @@ class LocalRuntimeConfigTests(TestCase):
             with self.subTest(worker=worker):
                 self.assertIn(f"\n  {worker}:\n", compose)
                 self.assertIn(f"\n  {worker}:\n", dev_compose)
+
+    def test_compose_starts_local_observability_stack(self) -> None:
+        compose = (ROOT / "docker-compose.yml").read_text()
+        env_example = (ROOT / ".env.example").read_text()
+        prometheus = (ROOT / "infra" / "local" / "observability" / "prometheus.yml").read_text()
+        otel = (ROOT / "infra" / "local" / "observability" / "otel-collector.yaml").read_text()
+        datasources = (
+            ROOT
+            / "infra"
+            / "local"
+            / "observability"
+            / "grafana"
+            / "provisioning"
+            / "datasources"
+            / "datasources.yml"
+        ).read_text()
+        dashboard = (
+            ROOT
+            / "infra"
+            / "local"
+            / "observability"
+            / "grafana"
+            / "dashboards"
+            / "service-health.json"
+        ).read_text()
+
+        for service in OBSERVABILITY_SERVICES:
+            with self.subTest(service=service):
+                self.assertIn(f"\n  {service}:\n", compose)
+
+        self.assertIn("OBSERVABILITY_MODE: ${OBSERVABILITY_MODE:-local}", compose)
+        self.assertIn("LOG_EXPORTER: ${LOG_EXPORTER:-loki}", compose)
+        self.assertIn("METRICS_EXPORTER: ${METRICS_EXPORTER:-prometheus}", compose)
+        self.assertIn("TRACES_EXPORTER: ${TRACES_EXPORTER:-tempo}", compose)
+        self.assertIn("OTEL_EXPORTER_OTLP_ENDPOINT", compose)
+        self.assertIn("OBSERVABILITY_MODE=local", env_example)
+        self.assertIn("OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318", env_example)
+        self.assertIn("otel-collector:8889", prometheus)
+        self.assertIn("loki:3100/loki/api/v1/push", otel)
+        self.assertIn("tempo:4317", otel)
+        self.assertIn("url: http://prometheus:9090", datasources)
+        self.assertIn("url: http://loki:3100", datasources)
+        self.assertIn("url: http://tempo:3200", datasources)
+        self.assertIn("GridLens Local Service Health", dashboard)
 
     def test_dev_overlay_runs_modules_without_devtools(self) -> None:
         dev_compose = (ROOT / "docker-compose.dev.yml").read_text()

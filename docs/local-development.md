@@ -368,6 +368,37 @@ listener. Service-specific debugger ports are deferred until debugger tooling is
 added, but every service should have a documented debugger port and avoid
 collisions with other local services when that happens.
 
+## Local Observability
+
+The Compose stack includes local-only observability backends:
+
+- Grafana: `http://127.0.0.1:${GRAFANA_PORT:-3000}`
+- Prometheus: `http://127.0.0.1:${PROMETHEUS_PORT:-9090}`
+- Loki: `http://127.0.0.1:${LOKI_PORT:-3100}`
+- Tempo: `http://127.0.0.1:${TEMPO_PORT:-3200}`
+- OTLP collector HTTP endpoint: `http://127.0.0.1:${OTEL_HTTP_PORT:-4318}`
+
+Application containers use the shared observability environment by default:
+
+```text
+OBSERVABILITY_MODE=local
+LOG_EXPORTER=loki
+METRICS_EXPORTER=prometheus
+TRACES_EXPORTER=tempo
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+```
+
+The collector configuration lives under `infra/local/observability/` and routes
+OTLP metrics to Prometheus, logs to Loki, and traces to Tempo. Grafana
+provisions Prometheus, Loki, and Tempo data sources automatically and loads the
+minimal `GridLens Local Service Health` dashboard from the same directory.
+
+Local telemetry must remain public-safe. Logs, metric labels, and span
+attributes should use request, correlation, trace, service, route, tenant, and
+job identifiers only after applying the shared redaction helpers. Do not emit
+account numbers, meter IDs, prompt text, source rows, credentials, signed URLs,
+or high-cardinality customer payloads as telemetry fields.
+
 ## Environment Variables
 
 `.env.example` is the public-safe environment contract for local development.

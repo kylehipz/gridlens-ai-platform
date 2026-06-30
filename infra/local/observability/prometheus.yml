@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["prometheus:9090"]
+
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8889"]
+
+  - job_name: gridlens-services
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - identity-tenant-service:8000
+          - data-operations-service:8000
+          - assistant-service:8000
+          - program-evaluation-service:8000
+          - insights-reporting-service:8000
+          - governance-service:8000
+          - alerts-anomalies-service:8000
