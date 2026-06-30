@@ -4,8 +4,7 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Table
-from sqlalchemy import text
+from sqlalchemy import Table, text
 from sqlalchemy.dialects.postgresql import insert
 
 from gridlens_db.database import create_database_engine

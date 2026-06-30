@@ -1,3 +1,13 @@
-from .tenant_repository import TenantScopedRepository
+from .tenant_repository import (
+    FileObjectRepository,
+    RlsSessionContext,
+    TenantMembershipRepository,
+    TenantScopedRepository,
+)
 
-__all__ = ["TenantScopedRepository"]
+__all__ = [
+    "FileObjectRepository",
+    "RlsSessionContext",
+    "TenantMembershipRepository",
+    "TenantScopedRepository",
+]
