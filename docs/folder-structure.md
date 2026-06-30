@@ -42,6 +42,8 @@ Expected contents:
   deployment model, and major tradeoffs.
 - `local-development.md`: local Docker Compose, AWS SSO, live AWS dependency,
   debugger, and development image conventions.
+- `production-observability.md`: production log, metric, and trace exporter
+  expectations.
 - `data-model.md`: core entities, relationships, tenant-scoping rules, and data
   lineage model.
 - `coding-standards.md`: project conventions for Python, TypeScript, testing,

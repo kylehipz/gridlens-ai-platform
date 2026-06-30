@@ -136,6 +136,12 @@ host `$HOME/.aws` directory read-only, receive `AWS_PROFILE`, `AWS_REGION`, and
 `AWS_SDK_LOAD_CONFIG=1`, and rely on expiring SSO credentials instead of static
 access keys.
 
+Local observability runs through Prometheus, Loki, Tempo, Grafana, and an OTLP
+collector defined under `infra/local/observability/`. Production observability
+uses the same application helper calls with exporter configuration pointed at
+CloudWatch metrics, CloudWatch Logs, and X-Ray, as documented in
+`docs/production-observability.md`.
+
 Each deployable service should provide a Dockerfile `dev` stage that installs
 development dependencies and debugger tooling. Development-only runtime behavior
 such as hot reload, bind mounts, and published debugger ports should be defined
