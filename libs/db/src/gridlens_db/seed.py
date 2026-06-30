@@ -199,12 +199,9 @@ def _seed_tenant_owned_rows(connection: Any, table: Table, rows: Sequence[Mappin
 def seed_database() -> None:
     engine = create_database_engine()
     with engine.begin() as connection:
-        for tenant_row in TENANT_ROWS:
-            _set_tenant(connection, tenant_row["id"])
-            _upsert_rows(connection, tenants, [tenant_row], ["id"])
-
+        _upsert_rows(connection, tenants, TENANT_ROWS, ["id"])
         _upsert_rows(connection, app_users, USER_ROWS, ["id"])
-        _seed_tenant_owned_rows(connection, tenant_memberships, MEMBERSHIP_ROWS)
+        _upsert_rows(connection, tenant_memberships, MEMBERSHIP_ROWS, ["id"])
         _seed_tenant_owned_rows(connection, file_objects, FILE_OBJECT_ROWS)
         _seed_tenant_owned_rows(connection, audit_logs, AUDIT_LOG_ROWS)
 

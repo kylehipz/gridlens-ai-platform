@@ -1,6 +1,7 @@
 import os
 import unittest
 from dataclasses import dataclass
+from importlib import import_module
 from uuid import UUID
 
 from gridlens_db import FileObjectRepository, TenantMembershipRepository, TenantScopedRepository
@@ -21,6 +22,10 @@ from gridlens_db.tenant_repository import (
 from gridlens_testing import make_tenant, make_user
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects import postgresql
+
+INITIAL_RLS_POLICIES = import_module(
+    "infra.db.alembic.versions.20260630_0003_add_initial_rls_policies"
+)
 
 
 @dataclass(frozen=True)
@@ -209,6 +214,15 @@ class SchemaMetadataTests(unittest.TestCase):
                 CASCADE_TENANT_ID: "analyst",
             },
             jordan_roles,
+        )
+
+    def test_initial_rls_only_protects_tenant_owned_operational_tables(self):
+        self.assertEqual(
+            {
+                "file_objects": "tenant_id",
+                "audit_logs": "tenant_id",
+            },
+            INITIAL_RLS_POLICIES.TENANT_POLICY_TABLES,
         )
 
 

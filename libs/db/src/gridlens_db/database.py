@@ -6,10 +6,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
 DEFAULT_DATABASE_URL = "postgresql+psycopg://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev"
+DEFAULT_MIGRATION_DATABASE_URL = (
+    "postgresql+psycopg://gridlens_migrator:gridlens_migrator_local@127.0.0.1:5432/gridlens_dev"
+)
 
 
 def database_url() -> str:
     return _normalize_driver(os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL))
+
+
+def migration_database_url() -> str:
+    return _normalize_driver(os.environ.get("MIGRATION_DATABASE_URL", DEFAULT_MIGRATION_DATABASE_URL))
 
 
 def create_database_engine(url: str | None = None) -> Engine:

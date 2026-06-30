@@ -71,8 +71,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-gridlens_dev}
       POSTGRES_USER: ${POSTGRES_SUPERUSER:-gridlens}
       POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-gridlens_local}
-      GRIDLENS_APP_USER: ${POSTGRES_USER:-gridlens_app}
-      GRIDLENS_APP_PASSWORD: ${POSTGRES_PASSWORD:-gridlens_app_local}
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:

@@ -12,20 +12,6 @@ jobs:
   repository-checks:
     name: Repository checks
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_DB: gridlens_dev
-          POSTGRES_USER: gridlens
-          POSTGRES_PASSWORD: gridlens_local
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U gridlens -d gridlens_dev"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 12
     env:
       SYSTEM_PYTHON: python
       PYTHON: .venv/bin/python
@@ -34,8 +20,11 @@ jobs:
       POSTGRES_DB: gridlens_dev
       POSTGRES_SUPERUSER: gridlens
       POSTGRES_SUPERUSER_PASSWORD: gridlens_local
-      POSTGRES_USER: gridlens_app
-      POSTGRES_PASSWORD: gridlens_app_local
+      POSTGRES_MIGRATOR_USER: gridlens_migrator
+      POSTGRES_MIGRATOR_PASSWORD: gridlens_migrator_local
+      POSTGRES_APP_USER: gridlens_app
+      POSTGRES_APP_PASSWORD: gridlens_app_local
+      MIGRATION_DATABASE_URL: postgresql://gridlens_migrator:gridlens_migrator_local@127.0.0.1:5432/gridlens_dev
       DATABASE_URL: postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev
       AWS_EC2_METADATA_DISABLED: "true"
       AWS_REGION: us-east-1
@@ -55,6 +44,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Start PostgreSQL
+        run: |
+          docker compose -f docker-compose.yml up -d postgres
+          for attempt in $(seq 1 30); do
+            if docker compose -f docker-compose.yml exec -T postgres pg_isready -U gridlens -d gridlens_dev; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f docker-compose.yml logs postgres
+          exit 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -84,14 +85,11 @@ jobs:
       - name: Frontend offline tests
         run: make test-frontend
 
-      - name: Locate PostgreSQL service container
-        run: |
-          container_id="$(docker ps --filter "ancestor=pgvector/pgvector:pg16" --format "{{.ID}}" | head -n 1)"
-          test -n "$container_id"
-          echo "POSTGRES_CONTAINER_ID=$container_id" >> "$GITHUB_ENV"
+      - name: Migrate database
+        run: make migrate
 
-      - name: Bootstrap live database
-        run: make bootstrap-live-db
+      - name: Seed database
+        run: make seed
 
-      - name: Live database tests
-        run: make test-live-db
+      - name: Local database checks
+        run: make test-local-db

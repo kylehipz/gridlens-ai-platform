@@ -5,7 +5,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from gridlens_db.database import database_url
+from gridlens_db.database import migration_database_url
 from gridlens_db.models import metadata
 
 config = context.config
@@ -13,13 +13,13 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", database_url())
+config.set_main_option("sqlalchemy.url", migration_database_url())
 target_metadata = metadata
 
 
 def run_migrations_offline() -> None:
     context.configure(
-        url=database_url(),
+        url=migration_database_url(),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},

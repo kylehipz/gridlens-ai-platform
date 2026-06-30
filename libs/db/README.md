@@ -12,8 +12,13 @@ root:
 make migrate
 ```
 
-`make migrate` uses `DATABASE_URL` when set. Without `DATABASE_URL`, it targets
-the local host PostgreSQL defaults from the root `Makefile`.
+`make migrate` uses `MIGRATION_DATABASE_URL` when set. Without
+`MIGRATION_DATABASE_URL`, it targets the local host PostgreSQL migrator defaults
+from `gridlens_db.database`.
+
+Runtime code and `make seed` use `DATABASE_URL`, which should point at the
+lower-privilege `gridlens_app` role. Alembic migrations use the
+`gridlens_migrator` role so schema ownership and runtime access stay separate.
 
 The T07 baseline schema creates:
 
@@ -23,9 +28,12 @@ The T07 baseline schema creates:
 - `app.file_objects`
 - `app.audit_logs`
 
-`app_users` is global identity metadata. Memberships, file objects, audit logs,
-and tenant rows are tenant-owned and protected by initial PostgreSQL RLS
-policies that read the `app.tenant_id` session setting.
+`app_users`, `tenants`, and `tenant_memberships` are identity/control-plane
+metadata. Tenant and membership access is enforced in repository and service
+authorization logic so onboarding and workspace discovery can run before an
+active tenant context exists. File objects and audit logs are tenant-scoped
+operational records protected by initial PostgreSQL RLS policies that read the
+`app.tenant_id` session setting.
 
 ## Seed Data
 
@@ -45,8 +53,8 @@ emails, credentials, regulated data, or production exports.
 
 ## Tenant Session Settings
 
-Tenant-owned queries must set the tenant context before reading or writing
-tenant rows:
+Tenant-scoped operational queries must set the tenant context before reading or
+writing RLS-protected rows:
 
 ```sql
 select set_config('app.tenant_id', '<tenant_uuid>', true);
