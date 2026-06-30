@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import cast
 
-from gridlens_contracts.audit import AuditAction, is_dotted_action
+from gridlens_contracts.audit import AuditAction, AuditContext, AuditEvent, is_dotted_action
 from gridlens_contracts.errors import ErrorEnvelope
 from gridlens_contracts.events import EventEnvelope
 from gridlens_contracts.pagination import ListResponse, Pagination
@@ -125,6 +125,27 @@ class EnvelopeTests(unittest.TestCase):
         self.assertIn(AuditAction.TENANT_CREATED, AuditAction)
         self.assertIn(AuditAction.AUTHORIZATION_DENIED, AuditAction)
         self.assertTrue(all(is_dotted_action(action.value) for action in AuditAction))
+
+    def test_audit_event_can_carry_request_and_trace_context(self):
+        event = AuditEvent(
+            action=AuditAction.JOB_RETRIED.value,
+            tenant_id="tenant_a",
+            actor_id="worker",
+            target_type="job",
+            target_id="job_1",
+            context=AuditContext(
+                request_id="req_1",
+                correlation_id="corr_1",
+                trace_id="trace_1",
+                span_id="span_1",
+            ),
+            metadata={"attempt": 2},
+        ).to_dict()
+
+        self.assertEqual("req_1", event["context"]["request_id"])
+        self.assertEqual("corr_1", event["context"]["correlation_id"])
+        self.assertEqual("trace_1", event["context"]["trace_id"])
+        self.assertEqual("span_1", event["context"]["span_id"])
 
 
 if __name__ == "__main__":

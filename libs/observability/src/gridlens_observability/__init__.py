@@ -28,6 +28,7 @@ from .tracing import (
     set_trace_exporter,
     start_span,
 )
+from .worker import WorkerMessageContext, observe_worker_job
 
 __all__ = [
     "InMemoryMetricExporter",
@@ -40,6 +41,7 @@ __all__ = [
     "ObservabilitySettings",
     "SpanRecord",
     "TraceContext",
+    "WorkerMessageContext",
     "bind_context",
     "clear_context",
     "configure_json_logging",
@@ -58,4 +60,5 @@ __all__ = [
     "settings_from_env",
     "start_span",
     "structured_record",
+    "observe_worker_job",
 ]
