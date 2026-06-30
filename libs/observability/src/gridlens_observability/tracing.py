@@ -1,7 +1,9 @@
+import json
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from time import perf_counter
-from typing import Iterator, Protocol
+from time import perf_counter, time_ns
+from typing import Any, Iterator, Protocol
+from urllib import request
 from uuid import uuid4
 
 from .context import bind_context, current_context, current_context_fields, reset_context
@@ -31,6 +33,7 @@ class SpanRecord:
     duration_ms: float = 0.0
     status: str = "ok"
     error_type: str | None = None
+    end_time_unix_nano: int = 0
 
 
 class TraceExporter(Protocol):
@@ -55,6 +58,48 @@ class InMemoryTraceExporter:
 
     def clear(self) -> None:
         self._records.clear()
+
+
+class OtlpTraceExporter:
+    def __init__(self, endpoint: str, *, service_name: str) -> None:
+        self.endpoint = endpoint.rstrip("/")
+        self.service_name = service_name
+
+    def emit(self, record: SpanRecord) -> None:
+        payload = {
+            "resourceSpans": [
+                {
+                    "resource": {
+                        "attributes": [_string_attribute("service.name", self.service_name)]
+                    },
+                    "scopeSpans": [
+                        {
+                            "scope": {"name": "gridlens_observability"},
+                            "spans": [
+                                {
+                                    "traceId": record.trace_id,
+                                    "spanId": record.span_id,
+                                    "parentSpanId": record.parent_span_id or "",
+                                    "name": record.name,
+                                    "kind": 1,
+                                    "startTimeUnixNano": str(
+                                        max(
+                                            record.end_time_unix_nano
+                                            - int(record.duration_ms * 1_000_000),
+                                            0,
+                                        )
+                                    ),
+                                    "endTimeUnixNano": str(record.end_time_unix_nano),
+                                    "attributes": _attributes(record.attributes),
+                                    "status": {"code": 2 if record.status == "error" else 1},
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+        _post_json(f"{self.endpoint}/v1/traces", payload)
 
 
 _trace_exporter: TraceExporter = NoopTraceExporter()
@@ -96,7 +141,7 @@ def start_span(
     active = current_context()
     trace_id = parent.trace_id if parent else active.trace_id or _new_id()
     parent_span_id = parent.span_id if parent else active.span_id
-    span_id = _new_id()
+    span_id = _new_span_id()
     token = bind_context(trace_id=trace_id, span_id=span_id)
     started_at = perf_counter()
     status = "ok"
@@ -121,6 +166,7 @@ def start_span(
                 duration_ms=duration_ms,
                 status=status,
                 error_type=error_type,
+                end_time_unix_nano=time_ns(),
             )
         )
         reset_context(token)
@@ -128,3 +174,34 @@ def start_span(
 
 def _new_id() -> str:
     return uuid4().hex
+
+
+def _new_span_id() -> str:
+    return uuid4().hex[:16]
+
+
+def _attributes(attributes: dict[str, str | int | float | bool]) -> list[dict[str, object]]:
+    return [_attribute(key, value) for key, value in attributes.items()]
+
+
+def _attribute(key: str, value: str | int | float | bool) -> dict[str, object]:
+    if isinstance(value, bool):
+        return {"key": key, "value": {"boolValue": value}}
+    if isinstance(value, int):
+        return {"key": key, "value": {"intValue": str(value)}}
+    if isinstance(value, float):
+        return {"key": key, "value": {"doubleValue": value}}
+    return _string_attribute(key, value)
+
+
+def _string_attribute(key: str, value: str) -> dict[str, object]:
+    return {"key": key, "value": {"stringValue": value}}
+
+
+def _post_json(url: str, payload: dict[str, Any]) -> None:
+    body = json.dumps(payload).encode("utf-8")
+    req = request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        request.urlopen(req, timeout=0.25).close()
+    except OSError:
+        return None

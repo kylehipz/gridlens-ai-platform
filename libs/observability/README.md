@@ -117,3 +117,17 @@ Exporter selection is environment-driven through `settings_from_env`:
 The local stack is documented in `docs/local-development.md`. Production
 settings are documented in `docs/production-observability.md` and
 `infra/production/observability.env.example`.
+
+## Manual Smoke Routes
+
+When `OBSERVABILITY_MODE=local`, or when
+`OBSERVABILITY_SMOKE_ROUTES_ENABLED=true`, FastAPI services expose:
+
+- `GET /__observability/smoke`: emits a structured log, Prometheus metrics, and
+  an `observability.smoke` span.
+- `GET /__observability/fail`: emits a failure log and metric, then returns a
+  safe correlated `ErrorEnvelope`.
+- `GET /metrics`: exposes Prometheus text-format metrics for local scraping.
+
+These routes are for local/manual observability validation only. Do not rely on
+them for product behavior.

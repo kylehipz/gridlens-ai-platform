@@ -393,6 +393,23 @@ OTLP metrics to Prometheus, logs to Loki, and traces to Tempo. Grafana
 provisions Prometheus, Loki, and Tempo data sources automatically and loads the
 minimal `GridLens Local Service Health` dashboard from the same directory.
 
+For manual observability checks, local API services expose dev-only smoke
+routes:
+
+```sh
+curl -H 'X-Request-ID: manual-req-1' \
+  http://127.0.0.1:${API_HOST_PORT:-8000}/__observability/smoke
+curl -H 'X-Request-ID: manual-req-2' \
+  http://127.0.0.1:${API_HOST_PORT:-8000}/__observability/fail
+curl http://127.0.0.1:${API_HOST_PORT:-8000}/metrics
+```
+
+`/__observability/smoke` emits a structured log, Prometheus-visible metrics, and
+a trace span. `/__observability/fail` returns the standard safe error envelope
+with the same request ID that appears in logs and traces. In Grafana, use
+Prometheus for `gridlens_observability_smoke_requests_total`, Loki for
+`observability_smoke`, and Tempo for the returned `trace_id`.
+
 Local telemetry must remain public-safe. Logs, metric labels, and span
 attributes should use request, correlation, trace, service, route, tenant, and
 job identifiers only after applying the shared redaction helpers. Do not emit

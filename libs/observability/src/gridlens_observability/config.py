@@ -10,6 +10,7 @@ class ObservabilitySettings:
     traces_exporter: str = "noop"
     otlp_endpoint: str | None = None
     service_name: str = "gridlens"
+    smoke_routes_enabled: bool = False
 
     @property
     def is_local(self) -> bool:
@@ -31,6 +32,10 @@ def settings_from_env(environ: dict[str, str] | None = None) -> ObservabilitySet
         traces_exporter=env.get("TRACES_EXPORTER", defaults.traces_exporter),
         otlp_endpoint=env.get("OTEL_EXPORTER_OTLP_ENDPOINT"),
         service_name=env.get("OTEL_SERVICE_NAME", "gridlens"),
+        smoke_routes_enabled=_enabled(
+            env.get("OBSERVABILITY_SMOKE_ROUTES_ENABLED"),
+            default=defaults.smoke_routes_enabled,
+        ),
     )
 
 
@@ -42,6 +47,7 @@ def _defaults_for_mode(mode: str) -> ObservabilitySettings:
             metrics_exporter="prometheus",
             traces_exporter="tempo",
             otlp_endpoint="http://otel-collector:4318",
+            smoke_routes_enabled=True,
         )
     if mode == "production":
         return ObservabilitySettings(
@@ -51,3 +57,9 @@ def _defaults_for_mode(mode: str) -> ObservabilitySettings:
             traces_exporter="xray",
         )
     return ObservabilitySettings(mode=mode)
+
+
+def _enabled(raw: str | None, *, default: bool) -> bool:
+    if raw is None:
+        return default
+    return raw.lower() in {"1", "true", "yes", "on"}

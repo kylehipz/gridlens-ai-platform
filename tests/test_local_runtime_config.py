@@ -94,6 +94,10 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertIn("name: gridlens-health-upstream", kong_config)
         self.assertIn("url: http://identity-tenant-service:8000/health", kong_config)
         self.assertIn("/api/v1/health", kong_config)
+        self.assertIn("name: gridlens-observability-upstream", kong_config)
+        self.assertIn("url: http://identity-tenant-service:8000", kong_config)
+        self.assertIn("/__observability", kong_config)
+        self.assertIn("/metrics", kong_config)
 
     def test_compose_starts_scaffold_services_and_workers(self) -> None:
         compose = (ROOT / "docker-compose.yml").read_text()
@@ -153,6 +157,7 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertIn("TRACES_EXPORTER: ${TRACES_EXPORTER:-tempo}", compose)
         self.assertIn("OTEL_EXPORTER_OTLP_ENDPOINT", compose)
         self.assertIn("OBSERVABILITY_MODE=local", env_example)
+        self.assertIn("OBSERVABILITY_SMOKE_ROUTES_ENABLED=true", env_example)
         self.assertIn("OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318", env_example)
         self.assertIn("otel-collector:8889", prometheus)
         self.assertIn("loki:3100/loki/api/v1/push", otel)

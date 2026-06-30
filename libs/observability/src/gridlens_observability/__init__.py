@@ -9,24 +9,31 @@ from .context import (
 )
 from .fastapi import instrument_fastapi_app
 from .logging import (
+    InMemoryLogExporter,
     JsonFormatter,
+    OtlpLogExporter,
     configure_json_logging,
     json_log_record,
     redact_value,
+    set_log_exporter,
     structured_record,
 )
 from .metrics import (
     InMemoryMetricExporter,
     MetricRecord,
     NoopMetricExporter,
+    PrometheusMetricExporter,
     counter,
     gauge,
     histogram,
+    prometheus_metrics_text,
     set_metric_exporter,
 )
+from .setup import configure_observability
 from .tracing import (
     InMemoryTraceExporter,
     NoopTraceExporter,
+    OtlpTraceExporter,
     SpanRecord,
     TraceContext,
     extract_trace_context,
@@ -38,19 +45,24 @@ from .worker import WorkerMessageContext, observe_worker_job
 
 __all__ = [
     "InMemoryMetricExporter",
+    "InMemoryLogExporter",
     "InMemoryTraceExporter",
     "JsonFormatter",
     "MetricRecord",
     "NoopMetricExporter",
     "NoopTraceExporter",
+    "OtlpLogExporter",
+    "OtlpTraceExporter",
     "ObservabilityContext",
     "ObservabilitySettings",
+    "PrometheusMetricExporter",
     "SpanRecord",
     "TraceContext",
     "WorkerMessageContext",
     "bind_context",
     "clear_context",
     "configure_json_logging",
+    "configure_observability",
     "counter",
     "current_context",
     "current_context_fields",
@@ -60,9 +72,11 @@ __all__ = [
     "instrument_fastapi_app",
     "json_log_record",
     "inject_trace_context",
+    "prometheus_metrics_text",
     "redact_value",
     "reset_context",
     "set_metric_exporter",
+    "set_log_exporter",
     "set_trace_exporter",
     "settings_from_env",
     "start_span",

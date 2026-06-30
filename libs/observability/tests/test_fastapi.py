@@ -10,6 +10,7 @@ from gridlens_observability import (
     instrument_fastapi_app,
     set_metric_exporter,
     set_trace_exporter,
+    settings_from_env,
 )
 
 RequestRunner = Callable[[httpx.AsyncClient], Awaitable[httpx.Response]]
@@ -113,3 +114,34 @@ def test_fastapi_middleware_returns_correlated_safe_error_response(caplog) -> No
     ]
     assert error_metrics[0].attributes["request_id"] == "req_error"
     assert traces.records()[0].status == "error"
+
+
+def test_local_smoke_routes_emit_visible_metrics(monkeypatch) -> None:
+    monkeypatch.setenv("OBSERVABILITY_MODE", "local")
+    monkeypatch.setenv("LOG_EXPORTER", "stdout")
+    monkeypatch.setenv("TRACES_EXPORTER", "noop")
+
+    app = FastAPI()
+    instrument_fastapi_app(app, service_name="test-service")
+
+    response = run_request(app, lambda client: client.get("/__observability/smoke"))
+    assert response.status_code == 200
+    assert response.json()["checks"] == ["log", "metric", "trace"]
+
+    metrics = run_request(app, lambda client: client.get("/metrics"))
+    assert metrics.status_code == 200
+    assert "gridlens_observability_smoke_requests_total" in metrics.text
+    assert 'route="/__observability/smoke"' in metrics.text
+
+
+def test_smoke_routes_can_be_forced_outside_local_mode(monkeypatch) -> None:
+    monkeypatch.setenv("OBSERVABILITY_MODE", "test")
+    monkeypatch.setenv("OBSERVABILITY_SMOKE_ROUTES_ENABLED", "true")
+    settings = settings_from_env()
+    assert settings.smoke_routes_enabled
+
+    app = FastAPI()
+    instrument_fastapi_app(app, service_name="test-service")
+    response = run_request(app, lambda client: client.get("/__observability/fail"))
+    assert response.status_code == 500
+    assert response.json()["request_id"]

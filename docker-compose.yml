@@ -21,6 +21,7 @@ x-api-environment: &api-environment
   METRICS_EXPORTER: ${METRICS_EXPORTER:-prometheus}
   TRACES_EXPORTER: ${TRACES_EXPORTER:-tempo}
   OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+  OBSERVABILITY_SMOKE_ROUTES_ENABLED: ${OBSERVABILITY_SMOKE_ROUTES_ENABLED:-true}
 
 x-worker-environment: &worker-environment
   APP_ENV: ${APP_ENV:-local}
@@ -39,6 +40,7 @@ x-worker-environment: &worker-environment
   METRICS_EXPORTER: ${METRICS_EXPORTER:-prometheus}
   TRACES_EXPORTER: ${TRACES_EXPORTER:-tempo}
   OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+  OBSERVABILITY_SMOKE_ROUTES_ENABLED: ${OBSERVABILITY_SMOKE_ROUTES_ENABLED:-true}
 
 x-api-healthcheck: &api-healthcheck
   test:

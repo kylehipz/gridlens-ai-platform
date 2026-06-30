@@ -3,13 +3,14 @@ from time import perf_counter
 from uuid import uuid4
 
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from gridlens_contracts.errors import ErrorEnvelope
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .context import bind_context, clear_context
 from .logging import json_log_record
-from .metrics import counter, histogram
+from .metrics import counter, gauge, histogram, prometheus_metrics_text
+from .setup import configure_observability
 from .tracing import TraceContext, extract_trace_context, start_span
 
 REQUEST_ID_HEADER = "x-request-id"
@@ -133,8 +134,68 @@ class ObservabilityASGIMiddleware:
 
 
 def instrument_fastapi_app(app: FastAPI, *, service_name: str) -> FastAPI:
+    settings = configure_observability(service_name=service_name)
+    _add_metrics_route(app)
+    if settings.smoke_routes_enabled:
+        _add_smoke_routes(app, service_name=service_name)
     app.add_middleware(ObservabilityASGIMiddleware, service_name=service_name)
     return app
+
+
+def _add_metrics_route(app: FastAPI) -> None:
+    async def metrics() -> PlainTextResponse:
+        return PlainTextResponse(prometheus_metrics_text(), media_type="text/plain; version=0.0.4")
+
+    app.add_api_route("/metrics", metrics, methods=["GET"], include_in_schema=False)
+
+
+def _add_smoke_routes(app: FastAPI, *, service_name: str) -> None:
+    async def smoke() -> dict[str, object]:
+        counter(
+            "gridlens.observability.smoke.requests",
+            service=service_name,
+            route="/__observability/smoke",
+        )
+        histogram(
+            "gridlens.observability.smoke.duration",
+            1,
+            unit="ms",
+            service=service_name,
+            route="/__observability/smoke",
+        )
+        gauge("gridlens.observability.smoke.gauge", 1, service=service_name)
+        with start_span("observability.smoke", service=service_name) as span:
+            json_log_record(
+                "observability_smoke",
+                service=service_name,
+                route="/__observability/smoke",
+                account_number="1234567890",
+            )
+            return {
+                "status": "ok",
+                "service": service_name,
+                "trace_id": span.trace_id,
+                "span_id": span.span_id,
+                "checks": ["log", "metric", "trace"],
+            }
+
+    async def fail() -> None:
+        counter(
+            "gridlens.observability.smoke.failures",
+            service=service_name,
+            route="/__observability/fail",
+        )
+        json_log_record(
+            "observability_smoke_failure",
+            service=service_name,
+            route="/__observability/fail",
+            failure_category="manual_smoke",
+            user_message="Manual observability failure smoke route.",
+        )
+        raise RuntimeError("manual observability smoke failure token=abc")
+
+    app.add_api_route("/__observability/smoke", smoke, methods=["GET"], include_in_schema=False)
+    app.add_api_route("/__observability/fail", fail, methods=["GET"], include_in_schema=False)
 
 
 def _headers_from_scope(scope: Scope) -> dict[str, str]:
