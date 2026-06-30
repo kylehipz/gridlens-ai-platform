@@ -31,9 +31,12 @@ def test_gridlens_local_collection_covers_health_requests() -> None:
 
     assert "Health" in request_names
     assert "Unknown Route" in request_names
+    assert "Observability Smoke" in request_names
+    assert "Observability Controlled Failure" in request_names
     assert "Identity Tenant Service Health" in request_names
     assert "Alerts Anomalies Service Health" in request_names
     assert "base_url" in variable_names
+    assert "observability_trace_id" in variable_names
     assert "identity_tenant_service_url" in variable_names
     assert "alerts_anomalies_service_url" in variable_names
     assert "api_gateway_service_url" not in variable_names
