@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 from uuid import UUID
@@ -16,6 +17,10 @@ CASCADE_TENANT_ID = UUID("10000000-0000-4000-8000-000000000002")
 JORDAN_USER_ID = UUID("20000000-0000-4000-8000-000000000001")
 PRIYA_USER_ID = UUID("20000000-0000-4000-8000-000000000002")
 MARCUS_USER_ID = UUID("20000000-0000-4000-8000-000000000003")
+
+JORDAN_COGNITO_SUB = os.environ.get("SEED_JORDAN_COGNITO_SUB", "dev-jordan-lee")
+PRIYA_COGNITO_SUB = os.environ.get("SEED_PRIYA_COGNITO_SUB", "dev-priya-raman")
+MARCUS_COGNITO_SUB = os.environ.get("SEED_MARCUS_COGNITO_SUB", "dev-marcus-brooks")
 
 TENANT_ROWS: list[dict[str, Any]] = [
     {
@@ -40,7 +45,7 @@ USER_ROWS: list[dict[str, Any]] = [
         "email": "jordan.lee@example.com",
         "display_name": "Jordan Lee",
         "external_auth_provider": "cognito",
-        "external_subject": "dev-jordan-lee",
+        "external_subject": JORDAN_COGNITO_SUB,
         "status": "active",
     },
     {
@@ -48,7 +53,7 @@ USER_ROWS: list[dict[str, Any]] = [
         "email": "priya.raman@example.com",
         "display_name": "Priya Raman",
         "external_auth_provider": "cognito",
-        "external_subject": "dev-priya-raman",
+        "external_subject": PRIYA_COGNITO_SUB,
         "status": "active",
     },
     {
@@ -56,7 +61,7 @@ USER_ROWS: list[dict[str, Any]] = [
         "email": "marcus.brooks@example.com",
         "display_name": "Marcus Brooks",
         "external_auth_provider": "cognito",
-        "external_subject": "dev-marcus-brooks",
+        "external_subject": MARCUS_COGNITO_SUB,
         "status": "active",
     },
 ]
@@ -66,14 +71,14 @@ MEMBERSHIP_ROWS: list[dict[str, Any]] = [
         "id": UUID("30000000-0000-4000-8000-000000000001"),
         "tenant_id": NORTHWIND_TENANT_ID,
         "user_id": JORDAN_USER_ID,
-        "role": "Tenant Admin",
+        "role": "Analyst",
         "status": "active",
     },
     {
         "id": UUID("30000000-0000-4000-8000-000000000002"),
         "tenant_id": CASCADE_TENANT_ID,
         "user_id": JORDAN_USER_ID,
-        "role": "Analyst",
+        "role": "Viewer",
         "status": "active",
     },
     {

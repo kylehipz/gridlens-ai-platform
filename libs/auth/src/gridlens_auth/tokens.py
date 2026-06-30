@@ -52,6 +52,8 @@ class Principal:
     subject: str
     email: str | None
     tenant_context: TenantContext | None
+    user_id: str | None = None
+    external_auth_provider: str | None = None
 
     @property
     def actor(self) -> ActorContext | None:

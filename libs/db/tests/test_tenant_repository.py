@@ -23,8 +23,10 @@ from gridlens_db.seed import (
 )
 from gridlens_db.tenant_repository import (
     RlsSessionContext,
+    app_user_external_identity_statement,
     file_object_lookup_statement,
     membership_lookup_statement,
+    membership_user_tenant_statement,
 )
 from gridlens_testing import make_tenant, make_user
 from sqlalchemy import UniqueConstraint
@@ -107,14 +109,60 @@ class TenantRepositoryTests(unittest.TestCase):
                     "id": UUID("30000000-0000-4000-8000-000000000001"),
                     "tenant_id": NORTHWIND_TENANT_ID,
                     "user_id": JORDAN_USER_ID,
-                    "role": "Tenant Admin",
+                    "role": "Analyst",
                     "status": "active",
                 }
             ]
         )
         records = TenantMembershipRepository(session).list_for_tenant(NORTHWIND_TENANT_ID)
-        self.assertEqual(["Tenant Admin"], [record.role for record in records])
+        self.assertEqual(["Analyst"], [record.role for record in records])
         self.assertEqual(NORTHWIND_TENANT_ID, records[0].tenant_id)
+
+    def test_membership_repository_maps_external_subject_to_user(self):
+        session = SessionStub(
+            [
+                {
+                    "id": JORDAN_USER_ID,
+                    "email": "jordan.lee@example.com",
+                    "display_name": "Jordan Lee",
+                    "external_auth_provider": "cognito",
+                    "external_subject": "dev-jordan-lee",
+                    "status": "active",
+                }
+            ]
+        )
+        user = TenantMembershipRepository(session).get_user_by_external_identity(
+            "cognito", "dev-jordan-lee"
+        )
+        self.assertIsNotNone(user)
+        assert user is not None
+        self.assertEqual(JORDAN_USER_ID, user.id)
+        self.assertEqual("cognito", user.external_auth_provider)
+        statement = session.statements[0][0]
+        self.assertIn("app_users.external_auth_provider = :external_auth_provider_1", str(statement))
+        self.assertIn("app_users.external_subject = :external_subject_1", str(statement))
+
+    def test_membership_repository_maps_user_tenant_membership(self):
+        session = SessionStub(
+            [
+                {
+                    "id": UUID("30000000-0000-4000-8000-000000000001"),
+                    "tenant_id": NORTHWIND_TENANT_ID,
+                    "user_id": JORDAN_USER_ID,
+                    "role": "Analyst",
+                    "status": "active",
+                }
+            ]
+        )
+        membership = TenantMembershipRepository(session).get_membership_for_user_tenant(
+            user_id=JORDAN_USER_ID, tenant_id=NORTHWIND_TENANT_ID
+        )
+        self.assertIsNotNone(membership)
+        assert membership is not None
+        self.assertEqual("Analyst", membership.role)
+        statement = session.statements[0][0]
+        self.assertIn("tenant_memberships.user_id = :user_id_1", str(statement))
+        self.assertIn("tenant_memberships.tenant_id = :tenant_id_1", str(statement))
 
     def test_file_object_repository_filters_lookup_by_tenant(self):
         tenant_a = UUID("10000000-0000-4000-8000-000000000001")
@@ -223,6 +271,20 @@ class SchemaMetadataTests(unittest.TestCase):
         )
         self.assertIn("tenant_memberships.tenant_id", membership_sql)
         self.assertIn("file_objects.tenant_id", file_sql)
+        app_user_sql = str(
+            app_user_external_identity_statement("cognito", "dev-jordan-lee").compile(
+                dialect=postgresql.dialect()
+            )
+        )
+        user_tenant_sql = str(
+            membership_user_tenant_statement(
+                user_id=JORDAN_USER_ID, tenant_id=NORTHWIND_TENANT_ID
+            ).compile(dialect=postgresql.dialect())
+        )
+        self.assertIn("app_users.external_auth_provider", app_user_sql)
+        self.assertIn("app_users.external_subject", app_user_sql)
+        self.assertIn("tenant_memberships.user_id", user_tenant_sql)
+        self.assertIn("tenant_memberships.tenant_id", user_tenant_sql)
 
     def test_seed_data_has_required_tenants_and_role_variation(self):
         self.assertEqual({"Northwind Utilities", "Cascade Water District"}, {row["name"] for row in TENANT_ROWS})
@@ -233,8 +295,8 @@ class SchemaMetadataTests(unittest.TestCase):
         }
         self.assertEqual(
             {
-                NORTHWIND_TENANT_ID: "Tenant Admin",
-                CASCADE_TENANT_ID: "Analyst",
+                NORTHWIND_TENANT_ID: "Analyst",
+                CASCADE_TENANT_ID: "Viewer",
             },
             jordan_roles,
         )
