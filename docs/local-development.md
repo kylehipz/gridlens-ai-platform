@@ -353,8 +353,24 @@ times without duplicate-key failures. The seed set includes `Northwind
 Utilities`, `Cascade Water District`, synthetic users, tenant memberships, file
 object metadata, and audit rows for `tenant.created` and
 `authorization.denied`. One synthetic user belongs to both seeded tenants with
-different roles. Do not replace seed values with real customer data, real
-emails, credentials, production exports, or regulated data.
+different roles: Jordan is an Analyst in Northwind and a Viewer in Cascade.
+Do not replace seed values with real customer data, real emails, credentials,
+production exports, or regulated data.
+
+For local Cognito testing, manually create the seeded synthetic users in the
+development Cognito user pool. If Cognito generates different `sub` values than
+the defaults in `gridlens_db.seed`, set the matching seed override variables
+before `make seed`:
+
+```sh
+SEED_JORDAN_COGNITO_SUB=<jordan-cognito-sub> \
+SEED_PRIYA_COGNITO_SUB=<priya-cognito-sub> \
+SEED_MARCUS_COGNITO_SUB=<marcus-cognito-sub> \
+DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev \
+make seed
+```
+
+Keep those override values local. Do not commit real Cognito subject values.
 
 Tenant-owned tables are protected by initial PostgreSQL RLS policies. Sessions
 must set the tenant context before tenant-scoped reads or writes to
@@ -387,10 +403,31 @@ DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlen
 The local runtime is configured for managed development resources rather than
 local AWS emulators. `.env.example` includes development-only placeholders for:
 
-- Cognito user pool and client IDs.
+- Cognito user pool, client ID, issuer, JWKS URL, hosted UI authorize/token
+  URLs, redirect URI, and scopes.
 - S3 artifact bucket.
 - SQS job queue URL.
 - Bedrock text and embedding model IDs.
+
+Set `AUTH_MODE=cognito` for normal local development. Deterministic fake tokens
+such as `dev:<subject>:<tenant_id>:<roles>` are accepted only by automated tests
+that construct `AuthSettings.test()`; they are not a local development bypass.
+Offline tests inject fake JWKS verifiers and fake identity repositories so the
+suite does not call Cognito or require network access.
+
+For Postman, use OAuth 2.0 Authorization Code with PKCE against the development
+Cognito hosted UI:
+
+- Auth URL: `{{cognito_authorization_url}}`
+- Access token URL: `{{cognito_token_url}}`
+- Client ID: `{{cognito_client_id}}`
+- Callback URL: `{{cognito_redirect_uri}}`
+- Scope: `{{cognito_scopes}}`
+- Client authentication: no client secret for the public local client
+
+After acquiring a token, store it only in the local Postman environment
+`access_token` variable. Do not commit tokens, client secrets, credentials, or
+personal Cognito identifiers.
 
 Before running product code that calls AWS, authenticate on the host:
 

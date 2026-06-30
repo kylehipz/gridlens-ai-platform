@@ -87,9 +87,9 @@ presentation only and must not be treated as an authorization boundary.
 - Keep secrets in environment or managed secret stores, never in source,
   documentation examples, fixtures, images, or generated artifacts.
 
-Development authentication flags such as `DEV_AUTH_ENABLED` are local-only
-shortcuts. They must not bypass server-side tenant checks or appear in
-production deployment paths.
+Deterministic fake authentication is test-only. Local development and deployed
+service paths should use Cognito/JWKS validation and must not bypass server-side
+tenant checks.
 
 ## Authentication and Authorization
 

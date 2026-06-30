@@ -31,12 +31,21 @@ def test_gridlens_local_collection_covers_health_requests() -> None:
     variable_names = {variable["key"] for variable in collection["variable"]}
 
     assert "Health" in request_names
+    assert "Create Upload URL" in request_names
     assert "Unknown Route" in request_names
     assert "Observability Smoke" in request_names
     assert "Observability Controlled Failure" in request_names
     assert "Identity Tenant Service Health" in request_names
     assert "Alerts Anomalies Service Health" in request_names
     assert "base_url" in variable_names
+    assert "access_token" in variable_names
+    assert "northwind_tenant_id" in variable_names
+    assert "cascade_tenant_id" in variable_names
+    assert "cognito_authorization_url" in variable_names
+    assert "cognito_token_url" in variable_names
+    assert "cognito_client_id" in variable_names
+    assert "cognito_redirect_uri" in variable_names
+    assert "cognito_scopes" in variable_names
     assert "observability_trace_id" in variable_names
     assert "identity_tenant_service_url" in variable_names
     assert "alerts_anomalies_service_url" in variable_names
@@ -52,9 +61,12 @@ def test_gridlens_local_environment_has_defaults_and_descriptions() -> None:
     assert environment["name"] == "GridLens Local"
     assert collection_variable_names <= set(environment_values)
     assert environment_values["base_url"]["value"] == "http://127.0.0.1:8000"
-    assert environment_values["tenant_id"]["value"] == "tenant_demo"
-    assert environment_values["user_id"]["value"] == "user_demo"
+    assert environment_values["tenant_id"]["value"] == "10000000-0000-4000-8000-000000000001"
+    assert environment_values["northwind_tenant_id"]["value"] == "10000000-0000-4000-8000-000000000001"
+    assert environment_values["cascade_tenant_id"]["value"] == "10000000-0000-4000-8000-000000000002"
+    assert environment_values["user_id"]["value"] == "20000000-0000-4000-8000-000000000001"
     assert environment_values["access_token"]["type"] == "secret"
+    assert environment_values["cognito_client_id"]["description"]
 
     for value in environment_values.values():
         if value["value"] == "":

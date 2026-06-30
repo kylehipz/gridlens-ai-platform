@@ -91,6 +91,67 @@
           ]
         },
         {
+          "name": "Create Upload URL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('returns JSON', function () {",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('returns authorization placeholder only', function () {",
+                  "  pm.expect(json.status).to.eql('authorized');",
+                  "  pm.expect(json.tenant_id).to.eql(pm.environment.get('northwind_tenant_id'));",
+                  "  pm.expect(json.upload.authorized).to.eql(true);",
+                  "  pm.expect(json.upload.storage).to.eql('deferred');",
+                  "  pm.expect(json).to.not.have.property('signed_url');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "postman-upload-url"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenants/{{northwind_tenant_id}}/files/upload-url",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "{{northwind_tenant_id}}",
+                "files",
+                "upload-url"
+              ]
+            },
+            "description": "Requests the T08 upload authorization placeholder through Kong. Acquire a Cognito token with OAuth 2.0 Authorization Code with PKCE and store it in the local access_token environment variable first."
+          }
+        },
+        {
           "name": "Unknown Route",
           "event": [
             {
@@ -634,6 +695,56 @@
     {
       "key": "base_url",
       "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "northwind_tenant_id",
+      "value": "10000000-0000-4000-8000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "cascade_tenant_id",
+      "value": "10000000-0000-4000-8000-000000000002",
+      "type": "string"
+    },
+    {
+      "key": "tenant_id",
+      "value": "10000000-0000-4000-8000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "20000000-0000-4000-8000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "cognito_authorization_url",
+      "value": "https://gridlens-dev.auth.ap-southeast-1.amazoncognito.com/oauth2/authorize",
+      "type": "string"
+    },
+    {
+      "key": "cognito_token_url",
+      "value": "https://gridlens-dev.auth.ap-southeast-1.amazoncognito.com/oauth2/token",
+      "type": "string"
+    },
+    {
+      "key": "cognito_client_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cognito_redirect_uri",
+      "value": "https://oauth.pstmn.io/v1/callback",
+      "type": "string"
+    },
+    {
+      "key": "cognito_scopes",
+      "value": "openid email profile",
       "type": "string"
     },
     {

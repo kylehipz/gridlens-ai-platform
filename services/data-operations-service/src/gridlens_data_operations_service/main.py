@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from gridlens_auth import (
+    AuthenticationError,
     AuthorizationAuditSink,
     AuthSettings,
     IdentityRepository,
@@ -13,6 +14,11 @@ from gridlens_data_operations_service.api.health import router as health_router
 from gridlens_data_operations_service.api.upload import create_upload_router
 
 
+class RejectingTokenValidator:
+    def validate(self, token: str, *, request_id: str, correlation_id: str):
+        raise AuthenticationError("Token validation is not configured.")
+
+
 def create_app(
     *,
     auth_settings: AuthSettings | None = None,
@@ -23,12 +29,18 @@ def create_app(
     app = FastAPI(title="GridLens Data Operations Service")
     app.include_router(health_router)
     app.include_router(create_upload_router(audit_sink=audit_sink))
-    if auth_settings is not None and token_validator is not None and identity_repository is not None:
+    if auth_settings is None or token_validator is None or identity_repository is None:
+        auth_settings = AuthSettings.test()
+        token_validator = RejectingTokenValidator()
+        resolver = None
+    else:
+        resolver = PrincipalResolver(identity_repository)
+    if auth_settings is not None and token_validator is not None:
         install_auth_middleware(
             app,
             settings=auth_settings,
             validator=token_validator,
-            resolver=PrincipalResolver(identity_repository),
+            resolver=resolver,
             public_paths={"/health", "/healthz"},
         )
     instrument_fastapi_app(app, service_name="data-operations-service")
