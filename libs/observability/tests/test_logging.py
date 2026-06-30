@@ -100,6 +100,22 @@ class ObservabilityTests(unittest.TestCase):
         self.assertEqual("warning", record["level"])
         self.assertEqual("ok", record["outcome"])
 
+    def test_structured_record_redacts_domain_identifier_fields(self):
+        clear_context()
+        record = structured_record(
+            "done",
+            account_id="acct_123",
+            account_number="1234567890",
+            meter_id="meter-abc-123",
+            participant_id="participant-42",
+            route="/health",
+        )
+        self.assertEqual("***", record["account_id"])
+        self.assertEqual("******7890", record["account_number"])
+        self.assertEqual("***", record["meter_id"])
+        self.assertEqual("***", record["participant_id"])
+        self.assertEqual("/health", record["route"])
+
     def test_log_extra_merges_context_and_redacts_fields_for_stdlib_logging(self):
         clear_context()
         bind_context(request_id="req_1", tenant_id="tenant_a")
@@ -163,6 +179,37 @@ class ObservabilityTests(unittest.TestCase):
         self.assertEqual("tenant_a", records[0].attributes["tenant_id"])
         self.assertEqual("***", records[0].attributes["prompt"])
         self.assertEqual("******7890", records[1].attributes["account_number"])
+
+    def test_metrics_and_spans_redact_domain_identifier_attributes(self):
+        clear_context()
+        metrics = InMemoryMetricExporter()
+        traces = InMemoryTraceExporter()
+        set_metric_exporter(metrics)
+        set_trace_exporter(traces)
+
+        counter(
+            "gridlens.requests.total",
+            meter_id="meter-abc-123",
+            participant_id="participant-42",
+            route="/health",
+        )
+        with start_span(
+            "service.lookup",
+            account_id="acct_123",
+            account_number="1234567890",
+            meter_number="meter-abc-123",
+        ):
+            pass
+
+        metric_attributes = metrics.records()[0].attributes
+        self.assertEqual("***", metric_attributes["meter_id"])
+        self.assertEqual("***", metric_attributes["participant_id"])
+        self.assertEqual("/health", metric_attributes["route"])
+
+        span_attributes = traces.records()[0].attributes
+        self.assertEqual("***", span_attributes["account_id"])
+        self.assertEqual("******7890", span_attributes["account_number"])
+        self.assertEqual("***", span_attributes["meter_number"])
 
     def test_trace_spans_propagate_context_and_capture_errors(self):
         clear_context()

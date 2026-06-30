@@ -15,6 +15,17 @@ SENSITIVE_FIELD_PARTS = (
     "token",
 )
 
+SENSITIVE_IDENTIFIER_FIELD_PARTS = (
+    "accountid",
+    "accountnumber",
+    "meternumber",
+    "meterid",
+    "participantid",
+    "participantnumber",
+    "utilityaccountid",
+    "utilityaccountnumber",
+)
+
 SAFE_TELEMETRY_FIELD_NAMES = {
     "error_module_path",
     "error_file_path",
@@ -65,6 +76,8 @@ def redact_field(key: str, value: Any) -> Any:
         return redact_value(value)
     normalized = "".join(character for character in key.lower() if character.isalnum())
     if any(part in normalized for part in SENSITIVE_FIELD_PARTS):
+        return _safe_sensitive_value(value)
+    if any(part in normalized for part in SENSITIVE_IDENTIFIER_FIELD_PARTS):
         return _safe_sensitive_value(value)
     return redact_value(value)
 
