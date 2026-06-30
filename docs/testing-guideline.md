@@ -58,21 +58,19 @@ Expose stable commands through `Makefile`:
   and AI adapters, auth/config/db/events/observability helpers, and
   import-boundary guards.
 - `make test-local-db`: run local PostgreSQL, app schema, and PGVector smoke
-  checks against an already-running Compose database.
-- `make bootstrap-live-db`: initialize a live PostgreSQL database with the app
-  role, app schema, and PGVector extension.
-- `make test-live-db`: run PostgreSQL, app schema, and PGVector smoke checks
-  against a database reachable through `POSTGRES_HOST` and `POSTGRES_PORT`, or
-  through `POSTGRES_CONTAINER_ID`.
+  checks against an already-running Compose database, including the
+  migrator/application role split.
 
 Cognito, S3, SQS, and Bedrock tests are intentionally not part of the default
 suite. Live AWS tests must be isolated behind an explicit target and use
 synthetic development data only.
 
-CI runs `make typecheck`, `make lint`, `make test`, `make bootstrap-live-db`,
-and `make test-live-db`. Database checks use a PostgreSQL/PGVector service
-container. AWS-facing configuration in CI must use mock values and must not
-require real AWS credentials, SSO, or network access to managed AWS services.
+CI runs `make typecheck`, `make lint`, backend/frontend tests, `make migrate`,
+`make seed`, and `make test-local-db`. Database checks start the Compose
+PostgreSQL/PGVector service after checkout so the repository SQL bootstrap
+directory is mounted into `/docker-entrypoint-initdb.d`. AWS-facing
+configuration in CI must use mock values and must not require real AWS
+credentials, SSO, or network access to managed AWS services.
 
 `pyproject.toml` is the source of truth for pytest discovery paths and source
 import paths. Add new Python test roots there instead of appending more

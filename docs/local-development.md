@@ -309,6 +309,7 @@ The local database uses a named Docker volume so data persists across
 `infra/local/postgres/init/` create:
 
 - the `gridlens_dev` local database;
+- the `gridlens_migrator` local migration role;
 - the `gridlens_app` local app role;
 - the `app` schema;
 - the `vector` PostgreSQL extension.
@@ -324,11 +325,62 @@ docker compose -f docker-compose.yml exec -T postgres psql \
 
 The result should include exactly one `vector` row. With the stack running,
 `make test-local-db` also verifies PostgreSQL connectivity, the `app` schema,
-and the app role's ability to create and drop a smoke-test table.
+the migrator role's ability to create and drop a smoke-test table, and the app
+role's inability to create schema objects.
 
-PostgreSQL entrypoint scripts only run when the data volume is empty. If you
-change init scripts or role defaults, run `make reset-local-state` before
-starting the stack again.
+Database bootstrap happens through mounted SQL init scripts, and schema changes
+are applied later through Alembic:
+
+```sh
+make migrate
+```
+
+`make migrate` reads `MIGRATION_DATABASE_URL` when set. For host-to-Compose
+access, use a host-reachable URL:
+
+```sh
+MIGRATION_DATABASE_URL=postgresql://gridlens_migrator:gridlens_migrator_local@127.0.0.1:5432/gridlens_dev make migrate
+```
+
+After migrations, load deterministic synthetic local data:
+
+```sh
+DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev make seed
+```
+
+`make seed` uses SQLAlchemy upserts with fixed UUIDs, so it can be run multiple
+times without duplicate-key failures. The seed set includes `Northwind
+Utilities`, `Cascade Water District`, synthetic users, tenant memberships, file
+object metadata, and audit rows for `tenant.created` and
+`authorization.denied`. One synthetic user belongs to both seeded tenants with
+different roles. Do not replace seed values with real customer data, real
+emails, credentials, production exports, or regulated data.
+
+Tenant-owned tables are protected by initial PostgreSQL RLS policies. Sessions
+must set the tenant context before tenant-scoped reads or writes to
+RLS-protected tables:
+
+```sql
+select set_config('app.tenant_id', '<tenant_uuid>', true);
+```
+
+The initial RLS policy set covers tenants, tenant memberships, file metadata,
+and audit logs. Application repositories still filter and authorize those
+tables explicitly; RLS remains a database backstop for tenant-owned rows.
+
+PostgreSQL SQL init scripts only run when the data volume is empty. If you
+change init SQL scripts or role defaults, run `make reset-local-state` before
+starting the stack again. Existing volumes created before the migrator/app role
+split must also be reset so the mounted SQL bootstrap can run.
+
+If you need a fresh schema and seed state during local development, run:
+
+```sh
+make reset-local-state
+make dev
+MIGRATION_DATABASE_URL=postgresql://gridlens_migrator:gridlens_migrator_local@127.0.0.1:5432/gridlens_dev make migrate
+DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev make seed
+```
 
 ## Managed AWS Development Resources
 

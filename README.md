@@ -58,15 +58,13 @@ mock values only.
 | `make test-contracts` | Run shared contract tests with pytest. |
 | `make test-libs` | Run all shared library tests with pytest. |
 | `make test-frontend` | Run the frontend Vitest/React Testing Library suite. |
-| `make test-local-db` | Smoke-test the running local PostgreSQL database, app schema, and PGVector extension. |
-| `make bootstrap-live-db` | Initialize a live PostgreSQL database with the app role, app schema, and PGVector extension. |
-| `make test-live-db` | Smoke-test a live PostgreSQL database reachable through `POSTGRES_HOST` and `POSTGRES_PORT`, or through `POSTGRES_CONTAINER_ID`. |
+| `make test-local-db` | Smoke-test the running local PostgreSQL database, app schema, PGVector extension, and role split. |
 | `make typecheck` | Run Pyright type checking. |
 | `make run-identity-tenant` | Run the identity tenant FastAPI service directly on the host without Kong. |
 | `make lint` | Run Ruff for backend Python linting plus repository hygiene checks. |
 | `make format` | Placeholder for future formatters. |
-| `make migrate` | Placeholder for future database migrations. |
-| `make seed` | Placeholder for future synthetic development seed data. |
+| `make migrate` | Run Alembic migrations against `MIGRATION_DATABASE_URL` or the local migrator defaults. |
+| `make seed` | Load deterministic synthetic development data through SQLAlchemy upserts. |
 | `make run` | Alias for `make dev`. |
 
 ## Documentation Map
