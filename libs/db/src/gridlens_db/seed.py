@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 from uuid import UUID
 
@@ -17,7 +17,7 @@ JORDAN_USER_ID = UUID("20000000-0000-4000-8000-000000000001")
 PRIYA_USER_ID = UUID("20000000-0000-4000-8000-000000000002")
 MARCUS_USER_ID = UUID("20000000-0000-4000-8000-000000000003")
 
-TENANT_ROWS = [
+TENANT_ROWS: list[dict[str, Any]] = [
     {
         "id": NORTHWIND_TENANT_ID,
         "name": "Northwind Utilities",
@@ -34,7 +34,7 @@ TENANT_ROWS = [
     },
 ]
 
-USER_ROWS = [
+USER_ROWS: list[dict[str, Any]] = [
     {
         "id": JORDAN_USER_ID,
         "email": "jordan.lee@example.com",
@@ -61,7 +61,7 @@ USER_ROWS = [
     },
 ]
 
-MEMBERSHIP_ROWS = [
+MEMBERSHIP_ROWS: list[dict[str, Any]] = [
     {
         "id": UUID("30000000-0000-4000-8000-000000000001"),
         "tenant_id": NORTHWIND_TENANT_ID,
@@ -92,7 +92,7 @@ MEMBERSHIP_ROWS = [
     },
 ]
 
-FILE_OBJECT_ROWS = [
+FILE_OBJECT_ROWS: list[dict[str, Any]] = [
     {
         "id": UUID("40000000-0000-4000-8000-000000000001"),
         "tenant_id": NORTHWIND_TENANT_ID,
@@ -121,7 +121,7 @@ FILE_OBJECT_ROWS = [
     },
 ]
 
-AUDIT_LOG_ROWS = [
+AUDIT_LOG_ROWS: list[dict[str, Any]] = [
     {
         "id": UUID("50000000-0000-4000-8000-000000000001"),
         "tenant_id": NORTHWIND_TENANT_ID,
@@ -189,7 +189,7 @@ def _set_tenant(connection: Any, tenant_id: UUID) -> None:
     connection.execute(text("select set_config('app.tenant_id', :tenant_id, true)"), {"tenant_id": str(tenant_id)})
 
 
-def _seed_tenant_owned_rows(connection: Any, table: Table, rows: list[Mapping[str, Any]]) -> None:
+def _seed_tenant_owned_rows(connection: Any, table: Table, rows: Sequence[Mapping[str, Any]]) -> None:
     for tenant_id in sorted({row["tenant_id"] for row in rows}, key=str):
         _set_tenant(connection, tenant_id)
         tenant_rows = [row for row in rows if row["tenant_id"] == tenant_id]
