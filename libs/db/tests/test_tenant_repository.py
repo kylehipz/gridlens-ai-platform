@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from importlib import import_module
 from uuid import UUID
 
-from gridlens_db import FileObjectRepository, TenantMembershipRepository, TenantScopedRepository
+from gridlens_db import TenantMembershipRepository, TenantScopedRepository
 from gridlens_db.models import (
     app_users,
     audit_logs,
@@ -22,9 +22,7 @@ from gridlens_db.seed import (
     USER_ROWS,
 )
 from gridlens_db.tenant_repository import (
-    RlsSessionContext,
     app_user_external_identity_statement,
-    file_object_lookup_statement,
     membership_lookup_statement,
     membership_user_tenant_statement,
 )
@@ -164,55 +162,6 @@ class TenantRepositoryTests(unittest.TestCase):
         self.assertIn("tenant_memberships.user_id = :user_id_1", str(statement))
         self.assertIn("tenant_memberships.tenant_id = :tenant_id_1", str(statement))
 
-    def test_file_object_repository_filters_lookup_by_tenant(self):
-        tenant_a = UUID("10000000-0000-4000-8000-000000000001")
-        tenant_b_file = UUID("40000000-0000-4000-8000-000000000002")
-        session = SessionStub([])
-        repo = FileObjectRepository(session)
-
-        with self.assertRaises(LookupError):
-            repo.get_for_tenant(tenant_a, tenant_b_file)
-
-        statement = session.statements[0][0]
-        self.assertIn("file_objects.tenant_id = :tenant_id_1", str(statement))
-        self.assertIn("file_objects.id = :id_1", str(statement))
-        self.assertEqual(tenant_a, statement.compile().params["tenant_id_1"])
-        self.assertEqual(tenant_b_file, statement.compile().params["id_1"])
-
-    def test_file_object_repository_maps_same_tenant_rows(self):
-        session = SessionStub(
-            [
-                {
-                    "id": UUID("40000000-0000-4000-8000-000000000001"),
-                    "tenant_id": NORTHWIND_TENANT_ID,
-                    "created_by_user_id": JORDAN_USER_ID,
-                    "object_purpose": "dataset_upload",
-                    "original_file_name": "northwind-meter-readings.csv",
-                    "content_type": "text/csv",
-                    "storage_bucket": "gridlens-dev-artifacts",
-                    "storage_key": "tenants/northwind-utilities/uploads/northwind-meter-readings.csv",
-                    "checksum_sha256": "a" * 64,
-                    "file_size_bytes": 2048,
-                    "storage_status": "available",
-                }
-            ]
-        )
-        records = FileObjectRepository(session).list_for_tenant(NORTHWIND_TENANT_ID)
-        self.assertEqual(["northwind-meter-readings.csv"], [record.original_file_name for record in records])
-        self.assertEqual(NORTHWIND_TENANT_ID, records[0].tenant_id)
-
-    def test_rls_session_context_exposes_and_applies_postgres_settings(self):
-        connection = SessionStub([])
-        settings = RlsSessionContext("tenant_a", "user_a", "req_1").settings()
-        self.assertEqual("tenant_a", settings["app.tenant_id"])
-
-        RlsSessionContext("tenant_a", "user_a", "req_1").apply(connection)
-
-        applied = [parameters for _statement, parameters in connection.statements]
-        self.assertIn({"key": "app.tenant_id", "value": "tenant_a"}, applied)
-        self.assertIn({"key": "app.actor_id", "value": "user_a"}, applied)
-        self.assertIn({"key": "app.request_id", "value": "req_1"}, applied)
-
 
 class SchemaMetadataTests(unittest.TestCase):
     def test_t07_tables_are_present_in_app_schema(self):
@@ -264,13 +213,7 @@ class SchemaMetadataTests(unittest.TestCase):
                 dialect=postgresql.dialect()
             )
         )
-        file_sql = str(
-            file_object_lookup_statement(NORTHWIND_TENANT_ID, UUID("40000000-0000-4000-8000-000000000001")).compile(
-                dialect=postgresql.dialect()
-            )
-        )
         self.assertIn("tenant_memberships.tenant_id", membership_sql)
-        self.assertIn("file_objects.tenant_id", file_sql)
         app_user_sql = str(
             app_user_external_identity_statement("cognito", "dev-jordan-lee").compile(
                 dialect=postgresql.dialect()

@@ -59,16 +59,19 @@ RLS-protected rows:
 select set_config('app.tenant_id', '<tenant_uuid>', true);
 ```
 
-`RlsSessionContext` exposes the current `app.tenant_id`, `app.actor_id`, and
-`app.request_id` settings for SQLAlchemy connections. PostgreSQL RLS is a
-backstop; application repositories still filter by tenant explicitly.
+`gridlens_db.rls.RlsSessionContext` exposes the current `app.tenant_id`,
+`app.actor_id`, and `app.request_id` settings for SQLAlchemy connections.
+PostgreSQL RLS is a backstop; application repositories still filter by tenant
+explicitly.
 
 ## Repositories
 
-`TenantMembershipRepository` and `FileObjectRepository` accept a SQLAlchemy
-session or connection-like object and always include tenant predicates in
-lookup/list statements. Cross-tenant lookups return no rows and raise
-`LookupError` at the repository boundary.
+Repository modules are grouped by the domain records they own.
+`TenantMembershipRepository` handles identity and membership lookups, while
+`FileObjectRepository` handles file metadata lookups. Both accept a SQLAlchemy
+session or connection-like object and include tenant predicates in lookup/list
+statements. Cross-tenant lookups return no rows and raise `LookupError` at the
+repository boundary.
 
 Fast in-memory tenant-scoping tests remain available through
 `TenantScopedRepository` for offline coverage.

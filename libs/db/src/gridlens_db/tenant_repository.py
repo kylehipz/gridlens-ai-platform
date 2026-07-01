@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import Any, Iterable, Protocol
 
-from sqlalchemy import Select, select, text
+from sqlalchemy import Select, select
 
-from gridlens_db.models import app_users, file_objects, tenant_memberships
+from gridlens_db.models import app_users, tenant_memberships
 
 
 class TenantOwned(Protocol):
@@ -14,27 +14,6 @@ class TenantOwned(Protocol):
     @property
     def tenant_id(self) -> str:
         ...
-
-
-@dataclass(frozen=True)
-class RlsSessionContext:
-    tenant_id: str
-    actor_id: str
-    request_id: str
-
-    def settings(self) -> dict[str, str]:
-        return {
-            "app.tenant_id": self.tenant_id,
-            "app.actor_id": self.actor_id,
-            "app.request_id": self.request_id,
-        }
-
-    def apply(self, connection: Any) -> None:
-        for key, value in self.settings().items():
-            connection.execute(
-                text("select set_config(:key, :value, true)"),
-                {"key": key, "value": value},
-            )
 
 
 class TenantScopedRepository:
@@ -68,21 +47,6 @@ class MembershipRecord:
     user_id: Any
     role: str
     status: str
-
-
-@dataclass(frozen=True)
-class FileObjectRecord:
-    id: Any
-    tenant_id: Any
-    created_by_user_id: Any
-    object_purpose: str
-    original_file_name: str
-    content_type: str
-    storage_bucket: str
-    storage_key: str
-    checksum_sha256: str
-    file_size_bytes: int
-    storage_status: str
 
 
 class TenantMembershipRepository:
@@ -119,26 +83,6 @@ class TenantMembershipRepository:
         return _membership_from_mapping(row)
 
 
-class FileObjectRepository:
-    def __init__(self, session: Any):
-        self._session = session
-
-    def list_for_tenant(self, tenant_id: Any) -> list[FileObjectRecord]:
-        statement = (
-            select(file_objects)
-            .where(file_objects.c.tenant_id == tenant_id)
-            .order_by(file_objects.c.created_at, file_objects.c.id)
-        )
-        return [_file_object_from_mapping(row) for row in self._session.execute(statement).mappings().all()]
-
-    def get_for_tenant(self, tenant_id: Any, file_object_id: Any) -> FileObjectRecord:
-        statement = file_object_lookup_statement(tenant_id, file_object_id)
-        row = self._session.execute(statement).mappings().one_or_none()
-        if row is None:
-            raise LookupError("File object not found.")
-        return _file_object_from_mapping(row)
-
-
 def membership_lookup_statement(tenant_id: Any, membership_id: Any) -> Select[Any]:
     return select(tenant_memberships).where(
         tenant_memberships.c.tenant_id == tenant_id,
@@ -160,13 +104,6 @@ def membership_user_tenant_statement(*, user_id: Any, tenant_id: Any) -> Select[
     )
 
 
-def file_object_lookup_statement(tenant_id: Any, file_object_id: Any) -> Select[Any]:
-    return select(file_objects).where(
-        file_objects.c.tenant_id == tenant_id,
-        file_objects.c.id == file_object_id,
-    )
-
-
 def _app_user_from_mapping(row: Any) -> AppUserRecord:
     return AppUserRecord(
         id=row["id"],
@@ -185,20 +122,4 @@ def _membership_from_mapping(row: Any) -> MembershipRecord:
         user_id=row["user_id"],
         role=row["role"],
         status=row["status"],
-    )
-
-
-def _file_object_from_mapping(row: Any) -> FileObjectRecord:
-    return FileObjectRecord(
-        id=row["id"],
-        tenant_id=row["tenant_id"],
-        created_by_user_id=row["created_by_user_id"],
-        object_purpose=row["object_purpose"],
-        original_file_name=row["original_file_name"],
-        content_type=row["content_type"],
-        storage_bucket=row["storage_bucket"],
-        storage_key=row["storage_key"],
-        checksum_sha256=row["checksum_sha256"],
-        file_size_bytes=row["file_size_bytes"],
-        storage_status=row["storage_status"],
     )
