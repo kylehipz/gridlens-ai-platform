@@ -6,6 +6,7 @@ from fastapi import Depends, FastAPI, Request
 from gridlens_auth import (
     AppUserRecord,
     AuthSettings,
+    PlatformRoleAssignmentRecord,
     Principal,
     PrincipalResolver,
     TenantMembershipRecord,
@@ -41,31 +42,31 @@ class FakeIdentityRepository:
         self.membership_calls = 0
         self.platform_role_calls = 0
 
-    def get_user_by_external_identity(self, provider: str, subject: str):
+    def get_user_by_external_identity(self, provider: str, subject: str) -> AppUserRecord | None:
         self.user_calls += 1
         if provider == "cognito" and subject == self.user.external_subject:
             return self.user
         return None
 
-    def list_active_platform_roles_for_user(self, user_id: str):
+    def list_active_platform_roles_for_user(
+        self, user_id: str
+    ) -> list[PlatformRoleAssignmentRecord]:
         self.platform_role_calls += 1
         if user_id == self.user.id:
             return [
-                type(
-                    "PlatformRoleAssignment",
-                    (),
-                    {
-                        "id": f"platform-role-{index}",
-                        "user_id": user_id,
-                        "role": role.value,
-                        "status": "active",
-                    },
-                )()
+                PlatformRoleAssignmentRecord(
+                    id=f"platform-role-{index}",
+                    user_id=user_id,
+                    role=role.value,
+                    status="active",
+                )
                 for index, role in enumerate(self.platform_roles, start=1)
             ]
         return []
 
-    def get_membership_for_user_tenant(self, *, user_id: str, tenant_id: str):
+    def get_membership_for_user_tenant(
+        self, *, user_id: str, tenant_id: str
+    ) -> TenantMembershipRecord | None:
         self.membership_calls += 1
         if user_id == self.membership.user_id and tenant_id == self.membership.tenant_id:
             return self.membership
