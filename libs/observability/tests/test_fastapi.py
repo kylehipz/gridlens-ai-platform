@@ -35,8 +35,8 @@ def test_fastapi_middleware_binds_request_context_and_records_signals(caplog) ->
     app = FastAPI()
     instrument_fastapi_app(app, service_name="test-service")
 
-    @app.get("/health")
-    async def health(request: Request) -> dict[str, str]:
+    @app.get("/ready")
+    async def ready(request: Request) -> dict[str, str]:
         return {
             "status": "ok",
             "request_id": request.state.request_id,
@@ -47,7 +47,7 @@ def test_fastapi_middleware_binds_request_context_and_records_signals(caplog) ->
         response = run_request(
             app,
             lambda client: client.get(
-                "/health",
+                "/ready",
                 headers={
                     "X-Request-ID": "req_test",
                     "X-Correlation-ID": "corr_test",
@@ -81,6 +81,51 @@ def test_fastapi_middleware_binds_request_context_and_records_signals(caplog) ->
     assert span.trace_id == "trace_parent"
     assert span.parent_span_id == "span_parent"
     assert span.attributes["request_id"] == "req_test"
+
+
+def test_fastapi_middleware_suppresses_health_completion_logs(caplog) -> None:
+    metrics = InMemoryMetricExporter()
+    traces = InMemoryTraceExporter()
+    set_metric_exporter(metrics)
+    set_trace_exporter(traces)
+
+    app = FastAPI()
+    instrument_fastapi_app(app, service_name="test-service")
+
+    @app.get("/health")
+    async def health(request: Request) -> dict[str, str]:
+        return {"status": "ok", "request_id": request.state.request_id}
+
+    @app.get("/healthz")
+    async def healthz() -> dict[str, str]:
+        return {"status": "ok"}
+
+    with caplog.at_level(logging.INFO, logger="gridlens.test-service.http"):
+        health_response = run_request(
+            app, lambda client: client.get("/health", headers={"X-Request-ID": "req_health"})
+        )
+        healthz_response = run_request(
+            app, lambda client: client.get("/healthz", headers={"X-Request-ID": "req_healthz"})
+        )
+
+    assert health_response.status_code == 200
+    assert health_response.headers["X-Request-ID"] == "req_health"
+    assert healthz_response.status_code == 200
+    assert healthz_response.headers["X-Request-ID"] == "req_healthz"
+    assert not [
+        record for record in caplog.records if record.getMessage() == "http_request_completed"
+    ]
+    assert [
+        record
+        for record in metrics.records()
+        if record.name == "gridlens.http.server.requests" and record.attributes["route"] == "/health"
+    ]
+    assert [
+        record
+        for record in metrics.records()
+        if record.name == "gridlens.http.server.requests" and record.attributes["route"] == "/healthz"
+    ]
+    assert len(traces.records()) == 2
 
 
 def test_fastapi_middleware_returns_correlated_safe_error_response(caplog) -> None:

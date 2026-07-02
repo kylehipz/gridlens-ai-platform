@@ -335,27 +335,33 @@ are applied later through Alembic:
 make migrate
 ```
 
-`make migrate` reads `MIGRATION_DATABASE_URL` when set. For host-to-Compose
-access, use a host-reachable URL:
+`make migrate` runs Alembic in the one-shot `db-migrate` Compose service. API
+and worker containers wait for that service to complete successfully before
+starting. The container uses the Compose-network migrator URL by default:
 
 ```sh
-MIGRATION_DATABASE_URL=postgresql://gridlens_migrator:gridlens_migrator_local@127.0.0.1:5432/gridlens_dev make migrate
+MIGRATION_DATABASE_URL=postgresql://gridlens_migrator:gridlens_migrator_local@postgres:5432/gridlens_dev
 ```
+
+For explicit host-side debugging, use `make migrate-host` with a host-reachable
+`MIGRATION_DATABASE_URL`.
 
 After migrations, load deterministic synthetic local data:
 
 ```sh
-DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev make seed
+make seed
 ```
 
-`make seed` uses SQLAlchemy upserts with fixed UUIDs, so it can be run multiple
-times without duplicate-key failures. The seed set includes `Northwind
-Utilities`, `Cascade Water District`, synthetic users, Kyle as a platform admin,
-tenant memberships, file object metadata, and audit rows for `tenant.created`
-and `authorization.denied`. Kyle is not assigned to any tenant; tenant creation
-audit rows use Kyle as the platform-admin actor. One synthetic tenant user
-belongs to both seeded tenants with different roles: Jordan is an Analyst in
-Northwind and a Viewer in Cascade.
+`make seed` runs the seed module through the DB utility container, so Compose
+loads `.env` and the default `postgres` hostname works without host-side URL
+overrides. The seed command uses SQLAlchemy upserts with fixed UUIDs, so it can
+be run multiple times without duplicate-key failures. The seed set includes
+`Northwind Utilities`, `Cascade Water District`, synthetic users, Kyle as a
+platform admin, tenant memberships, file object metadata, and audit rows for
+`tenant.created` and `authorization.denied`. Kyle is not assigned to any tenant;
+tenant creation audit rows use Kyle as the platform-admin actor. One synthetic
+tenant user belongs to both seeded tenants with different roles: Jordan is an
+Analyst in Northwind and a Viewer in Cascade.
 Do not replace seed values with real customer data, real emails, credentials,
 production exports, or regulated data.
 
@@ -369,7 +375,6 @@ SEED_JORDAN_COGNITO_SUB=<jordan-cognito-sub> \
 SEED_PRIYA_COGNITO_SUB=<priya-cognito-sub> \
 SEED_MARCUS_COGNITO_SUB=<marcus-cognito-sub> \
 SEED_KYLE_COGNITO_SUB=<kyle-cognito-sub> \
-DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev \
 make seed
 ```
 
@@ -401,8 +406,8 @@ If you need a fresh schema and seed state during local development, run:
 ```sh
 make reset-local-state
 make dev
-MIGRATION_DATABASE_URL=postgresql://gridlens_migrator:gridlens_migrator_local@127.0.0.1:5432/gridlens_dev make migrate
-DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev make seed
+make migrate
+make seed
 ```
 
 ## Managed AWS Development Resources

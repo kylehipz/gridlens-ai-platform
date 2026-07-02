@@ -19,6 +19,9 @@ from `gridlens_db.database`.
 Runtime code and `make seed` use `DATABASE_URL`, which should point at the
 lower-privilege `gridlens_app` role. Alembic migrations use the
 `gridlens_migrator` role so schema ownership and runtime access stay separate.
+The default `make seed` target runs inside the Compose DB utility container, so
+values from `.env` are loaded by Compose and `postgres` resolves on the local
+Compose network.
 
 The current app schema includes:
 

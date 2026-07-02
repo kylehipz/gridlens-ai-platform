@@ -17,6 +17,7 @@ REQUEST_ID_HEADER = "x-request-id"
 CORRELATION_ID_HEADER = "x-correlation-id"
 TRACE_ID_HEADER = "x-trace-id"
 SPAN_ID_HEADER = "x-span-id"
+QUIET_HTTP_LOG_ROUTES = frozenset({"/health", "/healthz"})
 
 
 class ObservabilityASGIMiddleware:
@@ -124,15 +125,16 @@ class ObservabilityASGIMiddleware:
                 method=method,
                 status_code=status_code,
             )
-            self.logger.info(
-                "http_request_completed",
-                **log_extra(
-                    status_code=status_code,
-                    route=route,
-                    method=method,
-                    duration_ms=duration_ms,
-                ),
-            )
+            if route not in QUIET_HTTP_LOG_ROUTES:
+                self.logger.info(
+                    "http_request_completed",
+                    **log_extra(
+                        status_code=status_code,
+                        route=route,
+                        method=method,
+                        duration_ms=duration_ms,
+                    ),
+                )
         finally:
             clear_context()
 

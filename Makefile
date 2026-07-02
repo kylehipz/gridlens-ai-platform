@@ -20,7 +20,7 @@ POSTGRES_MIGRATOR_PASSWORD ?= gridlens_migrator_local
 POSTGRES_APP_USER ?= gridlens_app
 POSTGRES_APP_PASSWORD ?= gridlens_app_local
 
-.PHONY: setup setup-frontend dev dev-gateway down reset-local-state purge test test-backend test-frontend test-contracts test-libs test-local-db lint typecheck format migrate seed run run-identity-tenant run-frontend
+.PHONY: setup setup-frontend dev dev-gateway down reset-local-state purge test test-backend test-frontend test-contracts test-libs test-local-db lint typecheck format migrate migrate-host seed run run-identity-tenant run-frontend
 
 setup: setup-frontend
 	@printf '%s\n' 'GridLens local setup'
@@ -117,7 +117,10 @@ format:
 	@printf '%s\n' 'No formatter is configured yet. Future Python and frontend formatters should run here.'
 
 migrate:
+	$(COMPOSE) $(COMPOSE_BASE) run --rm db-migrate
+
+migrate-host:
 	$(ALEMBIC) -c infra/db/alembic.ini upgrade head
 
 seed:
-	PYTHONPATH=libs/db/src $(PYTHON) -m gridlens_db.seed
+	$(COMPOSE) $(COMPOSE_BASE) run --rm db-migrate python -m gridlens_db.seed
