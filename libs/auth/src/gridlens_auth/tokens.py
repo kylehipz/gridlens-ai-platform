@@ -4,7 +4,7 @@ from enum import StrEnum
 from os import environ
 from typing import Any, Protocol, Self
 
-from gridlens_contracts.roles import PlatformRole, Role
+from gridlens_contracts.roles import Role
 from gridlens_contracts.tenant_context import ActorContext, TenantContext
 
 
@@ -72,12 +72,13 @@ class Principal:
     tenant_context: TenantContext | None
     user_id: str | None = None
     external_auth_provider: str | None = None
+    actor_context: ActorContext | None = None
 
     @property
     def actor(self) -> ActorContext | None:
-        if self.tenant_context is None:
-            return None
-        return self.tenant_context.actor
+        if self.tenant_context is not None:
+            return self.tenant_context.actor
+        return self.actor_context
 
 
 class TokenValidator(Protocol):
@@ -157,34 +158,19 @@ class JwksTokenValidator:
         try:
             claims = self.verifier.verify(token, issuer=self.issuer, audience=self.audience)
             subject = claims["sub"]
-            platform_roles = tuple(PlatformRole(value) for value in claims.get("platform_roles", ()))
-        except (KeyError, TypeError, ValueError) as error:
+        except (KeyError, TypeError) as error:
             raise AuthenticationError("Invalid JWT claims.") from error
         actor = ActorContext(
             actor_type="user",
             actor_id=subject,
             display_name=claims.get("name"),
-            platform_roles=platform_roles,
         )
-        tenant_id = claims.get("tenant_id")
-        tenant_context = None
-        if tenant_id:
-            tenant_context = TenantContext(
-                tenant_id=tenant_id,
-                actor=actor,
-                roles=self._tenant_roles(claims),
-                membership_id=claims.get("membership_id"),
-                membership_status=claims.get("membership_status"),
-                request_id=request_id,
-                correlation_id=correlation_id,
-            )
-        return Principal(subject=subject, email=claims.get("email"), tenant_context=tenant_context)
-
-    def _tenant_roles(self, claims: dict[str, Any]) -> tuple[Role, ...]:
-        try:
-            return tuple(Role(value) for value in claims.get("tenant_roles", ()))
-        except ValueError as error:
-            raise AuthenticationError("Invalid JWT claims.") from error
+        return Principal(
+            subject=subject,
+            email=claims.get("email"),
+            tenant_context=None,
+            actor_context=actor,
+        )
 
 
 DevTokenValidator = TestTokenValidator

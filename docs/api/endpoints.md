@@ -48,6 +48,9 @@ Platform roles:
   operational rollups without accessing tenant-owned source data unless also
   authorized for that tenant.
 
+Cognito JWTs authenticate identity only. Platform roles and tenant roles are
+resolved from GridLens data, not from JWT authorization claims.
+
 Permission shorthand:
 
 - `Any tenant member`: any active membership in the target tenant.

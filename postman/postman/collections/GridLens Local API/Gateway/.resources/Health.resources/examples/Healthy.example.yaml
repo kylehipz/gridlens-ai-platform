@@ -1,0 +1,19 @@
+$kind: http-example
+request:
+  url: "{{base_url}}/api/v1/health"
+  method: GET
+  headers:
+    Accept: application/json
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: text
+    content: |-
+      {
+        "status": "ok",
+        "service": "identity-tenant-service"
+      }
+order: 1000

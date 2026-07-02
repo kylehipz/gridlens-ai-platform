@@ -77,7 +77,7 @@ class AuthenticationASGIMiddleware:
             return
 
         tenant_id = _tenant_id_from_path(str(scope.get("path", "")))
-        if self.resolver is not None and tenant_id is not None:
+        if self.resolver is not None:
             try:
                 principal = self.resolver.resolve(
                     principal,

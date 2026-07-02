@@ -1,0 +1,14 @@
+$kind: http-request
+description: Negative smoke check proving the gateway does not accidentally expose undeclared scaffold routes.
+url: "{{base_url}}/api/v1/not-found"
+method: GET
+headers:
+  Accept: application/json
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('returns not found', function () {
+        pm.response.to.have.status(404);
+      });
+    language: text/javascript
+order: 3000

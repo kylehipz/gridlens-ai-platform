@@ -21,6 +21,7 @@ from .resolution import (
     AppUserRecord,
     IdentityRepository,
     IdentityResolutionError,
+    PlatformRoleAssignmentRecord,
     PrincipalResolver,
     TenantMembershipRecord,
 )
@@ -51,6 +52,7 @@ __all__ = [
     "IdentityResolutionError",
     "JwksTokenValidator",
     "PermissionDenied",
+    "PlatformRoleAssignmentRecord",
     "Principal",
     "PrincipalResolver",
     "TenantMembershipRecord",

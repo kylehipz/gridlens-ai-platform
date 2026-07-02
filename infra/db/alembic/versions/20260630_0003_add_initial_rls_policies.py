@@ -13,8 +13,6 @@ branch_labels = None
 depends_on = None
 
 TENANT_POLICY_TABLES = {
-    "tenants": "id",
-    "tenant_memberships": "tenant_id",
     "file_objects": "tenant_id",
     "audit_logs": "tenant_id",
 }

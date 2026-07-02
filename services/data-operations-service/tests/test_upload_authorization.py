@@ -17,7 +17,7 @@ class FakeIdentityRepository:
     def __init__(self):
         self.user = AppUserRecord(
             id=str(JORDAN_USER_ID),
-            email="jordan.lee@example.com",
+            email="jordan.lee@kylehipz.dev",
             display_name="Jordan Lee",
             external_auth_provider="cognito",
             external_subject="dev-jordan-lee",
@@ -44,6 +44,9 @@ class FakeIdentityRepository:
         if provider == "cognito" and subject == self.user.external_subject:
             return self.user
         return None
+
+    def list_active_platform_roles_for_user(self, user_id: str):
+        return []
 
     def get_membership_for_user_tenant(self, *, user_id: str, tenant_id: str):
         membership = self.memberships.get(tenant_id)

@@ -11,10 +11,11 @@ from gridlens_auth import (
     TenantMembershipRecord,
     TestTokenValidator,
     install_auth_middleware,
+    require_platform_roles,
     require_tenant_roles,
 )
 from gridlens_auth.permissions import AuthorizationDeniedAuditRecord
-from gridlens_contracts.roles import Role
+from gridlens_contracts.roles import PlatformRole, Role
 from gridlens_observability import instrument_fastapi_app
 
 
@@ -35,14 +36,34 @@ class FakeIdentityRepository:
             role="Analyst",
             status="active",
         )
+        self.platform_roles = [PlatformRole.PLATFORM_ADMIN]
         self.user_calls = 0
         self.membership_calls = 0
+        self.platform_role_calls = 0
 
     def get_user_by_external_identity(self, provider: str, subject: str):
         self.user_calls += 1
         if provider == "cognito" and subject == self.user.external_subject:
             return self.user
         return None
+
+    def list_active_platform_roles_for_user(self, user_id: str):
+        self.platform_role_calls += 1
+        if user_id == self.user.id:
+            return [
+                type(
+                    "PlatformRoleAssignment",
+                    (),
+                    {
+                        "id": f"platform-role-{index}",
+                        "user_id": user_id,
+                        "role": role.value,
+                        "status": "active",
+                    },
+                )()
+                for index, role in enumerate(self.platform_roles, start=1)
+            ]
+        return []
 
     def get_membership_for_user_tenant(self, *, user_id: str, tenant_id: str):
         self.membership_calls += 1
@@ -77,6 +98,11 @@ def build_app(*, audit_sink: FakeAuditSink | None = None):
         action="files.upload_url.create",
         audit_sink=audit_sink,
     )
+    platform_authorization = require_platform_roles(
+        PlatformRole.PLATFORM_ADMIN,
+        action="tenants.create",
+        audit_sink=audit_sink,
+    )
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -94,6 +120,17 @@ def build_app(*, audit_sink: FakeAuditSink | None = None):
             "request_id": request.state.request_id,
             "correlation_id": request.state.correlation_id,
             "handler_calls": handler_calls["protected"],
+        }
+
+    @app.post("/api/v1/tenants")
+    async def create_tenant(
+        principal: Annotated[Principal, Depends(platform_authorization)],
+    ) -> dict[str, str | None]:
+        handler_calls["protected"] += 1
+        return {
+            "subject": principal.subject,
+            "user_id": principal.user_id,
+            "actor_id": principal.actor.actor_id if principal.actor else None,
         }
 
     install_auth_middleware(
@@ -161,7 +198,34 @@ def test_valid_credentials_attach_resolved_state_and_reuse_observability_ids() -
         "handler_calls": 1,
     }
     assert repo.user_calls == 1
+    assert repo.platform_role_calls == 1
     assert repo.membership_calls == 1
+    assert handler_calls["protected"] == 1
+
+
+def test_platform_route_authorizes_from_gridlens_roles_without_tenant_context() -> None:
+    app, repo, handler_calls = build_app()
+
+    response = run_request(
+        app,
+        lambda client: client.post(
+            "/api/v1/tenants",
+            headers={
+                "X-GridLens-Test-Auth": "dev:user_1:ignored:Viewer",
+                "X-Request-ID": "req_platform",
+            },
+        ),
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "subject": "user_1",
+        "user_id": "user_1",
+        "actor_id": "user_1",
+    }
+    assert repo.user_calls == 1
+    assert repo.platform_role_calls == 1
+    assert repo.membership_calls == 0
     assert handler_calls["protected"] == 1
 
 

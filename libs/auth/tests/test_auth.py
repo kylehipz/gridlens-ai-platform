@@ -114,7 +114,7 @@ class AuthTests(unittest.TestCase):
         with self.assertRaises(PermissionDenied):
             require_role(active_viewer, {Role.ANALYST, Role.TENANT_ADMIN})
 
-    def test_jwks_ready_validator_uses_injected_provider_without_network(self):
+    def test_jwks_ready_validator_uses_injected_provider_for_authentication_only(self):
         verifier = FakeJwksVerifier()
         settings = AuthSettings.cognito(
             issuer="https://issuer.example.test",
@@ -125,14 +125,12 @@ class AuthTests(unittest.TestCase):
             "jwt", request_id="req", correlation_id="corr"
         )
         self.assertEqual([("jwt", "https://issuer.example.test", "gridlens")], verifier.calls)
-        self.assertIsNotNone(principal.tenant_context)
-        assert principal.tenant_context is not None
         self.assertEqual("user_jwks", principal.subject)
-        self.assertEqual("tenant_a", principal.tenant_context.tenant_id)
-        self.assertIn(Role.TENANT_ADMIN, principal.tenant_context.roles)
-        self.assertEqual("req", principal.tenant_context.request_id)
-        self.assertEqual("corr", principal.tenant_context.correlation_id)
-        self.assertIn(PlatformRole.PLATFORM_OPERATOR, principal.tenant_context.actor.platform_roles)
+        self.assertIsNone(principal.tenant_context)
+        self.assertIsNotNone(principal.actor)
+        assert principal.actor is not None
+        self.assertEqual("user_jwks", principal.actor.actor_id)
+        self.assertEqual((), principal.actor.platform_roles)
 
     def test_jwks_validator_rejects_bad_claim_shape(self):
         class BadVerifier:

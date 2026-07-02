@@ -1,4 +1,4 @@
 interface:
   display_name: "Create Postman Requests"
-  short_description: "Maintain Postman API workflows"
-  default_prompt: "Use $create-postman-requests to add local Postman requests with tests and variable chaining."
+  short_description: "Sync Postman API workflows"
+  default_prompt: "Use $create-postman-requests to sync changed API requests and environments directly to Postman My Workspace."

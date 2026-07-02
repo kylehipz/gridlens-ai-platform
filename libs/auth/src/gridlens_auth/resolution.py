@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from gridlens_contracts.roles import Role
+from gridlens_contracts.roles import PlatformRole, Role
 from gridlens_contracts.tenant_context import ActorContext, TenantContext
 
 from .tokens import AuthenticationError, Principal
@@ -30,8 +30,19 @@ class TenantMembershipRecord:
     status: str
 
 
+@dataclass(frozen=True)
+class PlatformRoleAssignmentRecord:
+    id: str
+    user_id: str
+    role: str
+    status: str
+
+
 class IdentityRepository(Protocol):
     def get_user_by_external_identity(self, provider: str, subject: str) -> AppUserRecord | None:
+        ...
+
+    def list_active_platform_roles_for_user(self, user_id: str) -> list[PlatformRoleAssignmentRecord]:
         ...
 
     def get_membership_for_user_tenant(
@@ -49,7 +60,7 @@ class PrincipalResolver:
         self,
         principal: Principal,
         *,
-        tenant_id: str,
+        tenant_id: str | None,
         request_id: str,
         correlation_id: str,
     ) -> Principal:
@@ -58,6 +69,31 @@ class PrincipalResolver:
         )
         if user is None or user.status != "active":
             raise IdentityResolutionError("Authenticated user is not available.")
+
+        try:
+            platform_roles = tuple(
+                PlatformRole(assignment.role)
+                for assignment in self._repository.list_active_platform_roles_for_user(str(user.id))
+            )
+        except ValueError as error:
+            raise IdentityResolutionError("Authenticated user is not available.") from error
+
+        actor = ActorContext(
+            actor_type="user",
+            actor_id=str(user.id),
+            display_name=user.display_name,
+            platform_roles=platform_roles,
+        )
+
+        if tenant_id is None:
+            return Principal(
+                subject=principal.subject,
+                email=user.email,
+                user_id=str(user.id),
+                external_auth_provider=user.external_auth_provider,
+                tenant_context=None,
+                actor_context=actor,
+            )
 
         membership = self._repository.get_membership_for_user_tenant(
             user_id=str(user.id), tenant_id=tenant_id
@@ -70,12 +106,6 @@ class PrincipalResolver:
         except ValueError as error:
             raise IdentityResolutionError("Tenant membership is not available.") from error
 
-        actor = ActorContext(
-            actor_type="user",
-            actor_id=str(user.id),
-            display_name=user.display_name,
-            platform_roles=principal.actor.platform_roles if principal.actor else (),
-        )
         return Principal(
             subject=principal.subject,
             email=user.email,

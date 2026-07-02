@@ -20,19 +20,23 @@ Runtime code and `make seed` use `DATABASE_URL`, which should point at the
 lower-privilege `gridlens_app` role. Alembic migrations use the
 `gridlens_migrator` role so schema ownership and runtime access stay separate.
 
-The T07 baseline schema creates:
+The current app schema includes:
 
 - `app.tenants`
 - `app.app_users`
 - `app.tenant_memberships`
+- `app.platform_role_assignments`
 - `app.file_objects`
 - `app.audit_logs`
 
-`app_users` is global identity metadata. `tenants`, `tenant_memberships`,
-`file_objects`, and `audit_logs` are protected by initial PostgreSQL RLS
-policies that read the `app.tenant_id` session setting. Application
-repositories still filter and authorize tenant access explicitly; RLS is the
-database backstop.
+`app_users` is global identity metadata. `tenants` and `tenant_memberships`
+remain outside tenant-scoped RLS so platform admins can create tenants and
+assign access before they belong to any tenant. Platform roles are persisted in
+`platform_role_assignments`; Cognito is authentication-only. `file_objects` and
+`audit_logs` are protected by initial PostgreSQL RLS policies that read the
+`app.tenant_id` session setting. Application repositories still filter and
+authorize tenant access explicitly; RLS is the database backstop for
+tenant-owned rows.
 
 ## Seed Data
 
@@ -44,8 +48,9 @@ make seed
 
 Seed rows use fixed UUIDs and PostgreSQL upserts, so the command can be run
 repeatedly without duplicate rows. The seed data includes `Northwind Utilities`,
-`Cascade Water District`, synthetic users, tenant memberships, file metadata,
-and audit rows for `tenant.created` and `authorization.denied`.
+`Cascade Water District`, synthetic users, Kyle as a platform admin, tenant
+memberships, file metadata, and audit rows for `tenant.created` and
+`authorization.denied`.
 
 Seed values must remain public-safe: do not add real customer names, real
 emails, credentials, regulated data, or production exports.

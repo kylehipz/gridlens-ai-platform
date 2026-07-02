@@ -350,10 +350,12 @@ DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlen
 
 `make seed` uses SQLAlchemy upserts with fixed UUIDs, so it can be run multiple
 times without duplicate-key failures. The seed set includes `Northwind
-Utilities`, `Cascade Water District`, synthetic users, tenant memberships, file
-object metadata, and audit rows for `tenant.created` and
-`authorization.denied`. One synthetic user belongs to both seeded tenants with
-different roles: Jordan is an Analyst in Northwind and a Viewer in Cascade.
+Utilities`, `Cascade Water District`, synthetic users, Kyle as a platform admin,
+tenant memberships, file object metadata, and audit rows for `tenant.created`
+and `authorization.denied`. Kyle is not assigned to any tenant; tenant creation
+audit rows use Kyle as the platform-admin actor. One synthetic tenant user
+belongs to both seeded tenants with different roles: Jordan is an Analyst in
+Northwind and a Viewer in Cascade.
 Do not replace seed values with real customer data, real emails, credentials,
 production exports, or regulated data.
 
@@ -366,6 +368,7 @@ before `make seed`:
 SEED_JORDAN_COGNITO_SUB=<jordan-cognito-sub> \
 SEED_PRIYA_COGNITO_SUB=<priya-cognito-sub> \
 SEED_MARCUS_COGNITO_SUB=<marcus-cognito-sub> \
+SEED_KYLE_COGNITO_SUB=<kyle-cognito-sub> \
 DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev \
 make seed
 ```
@@ -380,9 +383,13 @@ RLS-protected tables:
 select set_config('app.tenant_id', '<tenant_uuid>', true);
 ```
 
-The initial RLS policy set covers tenants, tenant memberships, file metadata,
-and audit logs. Application repositories still filter and authorize those
-tables explicitly; RLS remains a database backstop for tenant-owned rows.
+The initial RLS policy set covers tenant-owned file metadata and audit logs.
+Tenant and tenant-membership management stays outside tenant-scoped RLS so
+platform admins can create tenants and assign access before they belong to any
+tenant. Platform roles are stored in GridLens `platform_role_assignments`;
+Cognito JWTs authenticate identity only. Application repositories still filter
+and authorize those tables explicitly; RLS remains a database backstop for
+tenant-owned rows.
 
 PostgreSQL SQL init scripts only run when the data volume is empty. If you
 change init SQL scripts or role defaults, run `make reset-local-state` before

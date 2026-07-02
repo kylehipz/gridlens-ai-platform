@@ -3,7 +3,7 @@ from typing import Any, Iterable, Protocol
 
 from sqlalchemy import Select, select
 
-from gridlens_db.models import app_users, tenant_memberships
+from gridlens_db.models import app_users, platform_role_assignments, tenant_memberships
 
 
 class TenantOwned(Protocol):
@@ -49,6 +49,14 @@ class MembershipRecord:
     status: str
 
 
+@dataclass(frozen=True)
+class PlatformRoleAssignmentRecord:
+    id: Any
+    user_id: Any
+    role: str
+    status: str
+
+
 class TenantMembershipRepository:
     def __init__(self, session: Any):
         self._session = session
@@ -82,6 +90,13 @@ class TenantMembershipRepository:
             return None
         return _membership_from_mapping(row)
 
+    def list_active_platform_roles_for_user(self, user_id: Any) -> list[PlatformRoleAssignmentRecord]:
+        statement = active_platform_roles_for_user_statement(user_id)
+        return [
+            _platform_role_assignment_from_mapping(row)
+            for row in self._session.execute(statement).mappings().all()
+        ]
+
 
 def membership_lookup_statement(tenant_id: Any, membership_id: Any) -> Select[Any]:
     return select(tenant_memberships).where(
@@ -104,6 +119,13 @@ def membership_user_tenant_statement(*, user_id: Any, tenant_id: Any) -> Select[
     )
 
 
+def active_platform_roles_for_user_statement(user_id: Any) -> Select[Any]:
+    return select(platform_role_assignments).where(
+        platform_role_assignments.c.user_id == user_id,
+        platform_role_assignments.c.status == "active",
+    )
+
+
 def _app_user_from_mapping(row: Any) -> AppUserRecord:
     return AppUserRecord(
         id=row["id"],
@@ -119,6 +141,15 @@ def _membership_from_mapping(row: Any) -> MembershipRecord:
     return MembershipRecord(
         id=row["id"],
         tenant_id=row["tenant_id"],
+        user_id=row["user_id"],
+        role=row["role"],
+        status=row["status"],
+    )
+
+
+def _platform_role_assignment_from_mapping(row: Any) -> PlatformRoleAssignmentRecord:
+    return PlatformRoleAssignmentRecord(
+        id=row["id"],
         user_id=row["user_id"],
         role=row["role"],
         status=row["status"],
