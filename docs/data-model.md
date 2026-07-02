@@ -805,6 +805,7 @@ erDiagram
 | `tenants` | Organization workspace boundary. Every tenant-owned product record should be queryable through this table. | `slug` is the stable human-readable identifier used in URLs and admin workflows. `preferences_json` can hold early display-unit and module preferences before stable settings tables are needed. |
 | `app_users` | Platform-level user identity. A user can belong to multiple tenants. | `external_auth_provider` and `external_subject` connect the user to the configured identity provider. |
 | `tenant_memberships` | Join table between users and tenants, including role and membership lifecycle. | Use this table for authorization checks and invitation state; do not infer access from ownership of other records. |
+| `platform_role_assignments` | Join table between users and global platform roles. | Use this table for platform authorization checks. Cognito authenticates identity only and must not be treated as the source of authorization roles. |
 
 ### File Storage Metadata
 
@@ -897,6 +898,7 @@ erDiagram
 | `tenants` | `unique(slug)` | Prevent ambiguous workspace URLs and admin references. |
 | `app_users` | `unique(lower(email))` and `unique(external_auth_provider, external_subject)` | Keep login identity stable while supporting external identity providers. |
 | `tenant_memberships` | `unique(tenant_id, user_id)` | Prevent duplicate membership rows for the same user and tenant. |
+| `platform_role_assignments` | `unique(user_id, role)` | Prevent duplicate platform role grants for the same user. |
 | `file_objects` | `unique(tenant_id, storage_bucket, storage_key)` | Prevent two metadata rows from pointing to the same tenant-owned object. |
 | `file_objects` | `unique(tenant_id, checksum_sha256)` where `checksum_sha256 is not null and object_purpose = 'dataset_upload'` | Detect duplicate dataset uploads inside a tenant while allowing generated outputs to share content when needed. |
 | `datasets` | `unique(tenant_id, name)` | Keep dataset catalog names unambiguous inside a tenant. |
@@ -933,6 +935,7 @@ heavy.
 | --- | --- | --- |
 | `tenant_memberships` | `(user_id, status)` | Finding active workspaces for a signed-in user. |
 | `tenant_memberships` | `(tenant_id, role, status)` | Tenant admin user management and authorization checks. |
+| `platform_role_assignments` | `(user_id, status)` | Finding active platform roles for a signed-in user. |
 | `file_objects` | `(tenant_id, object_purpose, created_at desc)` | Upload and generated artifact history. |
 | `file_objects` | `(tenant_id, checksum_sha256)` | Duplicate upload detection. |
 | `datasets` | `(tenant_id, dataset_type, updated_at desc)` | Dataset catalog filtering. |

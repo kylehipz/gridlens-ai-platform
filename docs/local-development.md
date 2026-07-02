@@ -335,26 +335,50 @@ are applied later through Alembic:
 make migrate
 ```
 
-`make migrate` reads `MIGRATION_DATABASE_URL` when set. For host-to-Compose
-access, use a host-reachable URL:
+`make migrate` runs Alembic in the one-shot `db-migrate` Compose service. API
+and worker containers wait for that service to complete successfully before
+starting. The container uses the Compose-network migrator URL by default:
 
 ```sh
-MIGRATION_DATABASE_URL=postgresql://gridlens_migrator:gridlens_migrator_local@127.0.0.1:5432/gridlens_dev make migrate
+MIGRATION_DATABASE_URL=postgresql://gridlens_migrator:gridlens_migrator_local@postgres:5432/gridlens_dev
 ```
+
+For explicit host-side debugging, use `make migrate-host` with a host-reachable
+`MIGRATION_DATABASE_URL`.
 
 After migrations, load deterministic synthetic local data:
 
 ```sh
-DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev make seed
+make seed
 ```
 
-`make seed` uses SQLAlchemy upserts with fixed UUIDs, so it can be run multiple
-times without duplicate-key failures. The seed set includes `Northwind
-Utilities`, `Cascade Water District`, synthetic users, tenant memberships, file
-object metadata, and audit rows for `tenant.created` and
-`authorization.denied`. One synthetic user belongs to both seeded tenants with
-different roles. Do not replace seed values with real customer data, real
-emails, credentials, production exports, or regulated data.
+`make seed` runs the seed module through the DB utility container, so Compose
+loads `.env` and the default `postgres` hostname works without host-side URL
+overrides. The seed command uses SQLAlchemy upserts with fixed UUIDs, so it can
+be run multiple times without duplicate-key failures. The seed set includes
+`Northwind Utilities`, `Cascade Water District`, synthetic users, Kyle as a
+platform admin, tenant memberships, file object metadata, and audit rows for
+`tenant.created` and `authorization.denied`. Kyle is not assigned to any tenant;
+tenant creation audit rows use Kyle as the platform-admin actor. One synthetic
+tenant user belongs to both seeded tenants with different roles: Jordan is an
+Analyst in Northwind and a Viewer in Cascade.
+Do not replace seed values with real customer data, real emails, credentials,
+production exports, or regulated data.
+
+For local Cognito testing, manually create the seeded synthetic users in the
+development Cognito user pool. If Cognito generates different `sub` values than
+the defaults in `gridlens_db.seed`, set the matching seed override variables
+before `make seed`:
+
+```sh
+SEED_JORDAN_COGNITO_SUB=<jordan-cognito-sub> \
+SEED_PRIYA_COGNITO_SUB=<priya-cognito-sub> \
+SEED_MARCUS_COGNITO_SUB=<marcus-cognito-sub> \
+SEED_KYLE_COGNITO_SUB=<kyle-cognito-sub> \
+make seed
+```
+
+Keep those override values local. Do not commit real Cognito subject values.
 
 Tenant-owned tables are protected by initial PostgreSQL RLS policies. Sessions
 must set the tenant context before tenant-scoped reads or writes to
@@ -364,9 +388,13 @@ RLS-protected tables:
 select set_config('app.tenant_id', '<tenant_uuid>', true);
 ```
 
-The initial RLS policy set covers tenants, tenant memberships, file metadata,
-and audit logs. Application repositories still filter and authorize those
-tables explicitly; RLS remains a database backstop for tenant-owned rows.
+The initial RLS policy set covers tenant-owned file metadata and audit logs.
+Tenant and tenant-membership management stays outside tenant-scoped RLS so
+platform admins can create tenants and assign access before they belong to any
+tenant. Platform roles are stored in GridLens `platform_role_assignments`;
+Cognito JWTs authenticate identity only. Application repositories still filter
+and authorize those tables explicitly; RLS remains a database backstop for
+tenant-owned rows.
 
 PostgreSQL SQL init scripts only run when the data volume is empty. If you
 change init SQL scripts or role defaults, run `make reset-local-state` before
@@ -378,8 +406,8 @@ If you need a fresh schema and seed state during local development, run:
 ```sh
 make reset-local-state
 make dev
-MIGRATION_DATABASE_URL=postgresql://gridlens_migrator:gridlens_migrator_local@127.0.0.1:5432/gridlens_dev make migrate
-DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev make seed
+make migrate
+make seed
 ```
 
 ## Managed AWS Development Resources
@@ -387,10 +415,31 @@ DATABASE_URL=postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlen
 The local runtime is configured for managed development resources rather than
 local AWS emulators. `.env.example` includes development-only placeholders for:
 
-- Cognito user pool and client IDs.
+- Cognito user pool, client ID, issuer, JWKS URL, hosted UI authorize/token
+  URLs, redirect URI, and scopes.
 - S3 artifact bucket.
 - SQS job queue URL.
 - Bedrock text and embedding model IDs.
+
+Set `AUTH_MODE=cognito` for normal local development. Deterministic fake tokens
+such as `dev:<subject>:<tenant_id>:<roles>` are accepted only by automated tests
+that construct `AuthSettings.test()`; they are not a local development bypass.
+Offline tests inject fake JWKS verifiers and fake identity repositories so the
+suite does not call Cognito or require network access.
+
+For Postman, use OAuth 2.0 Authorization Code with PKCE against the development
+Cognito hosted UI:
+
+- Auth URL: `{{cognito_authorization_url}}`
+- Access token URL: `{{cognito_token_url}}`
+- Client ID: `{{cognito_client_id}}`
+- Callback URL: `{{cognito_redirect_uri}}`
+- Scope: `{{cognito_scopes}}`
+- Client authentication: no client secret for the public local client
+
+After acquiring a token, store it only in the local Postman environment
+`access_token` variable. Do not commit tokens, client secrets, credentials, or
+personal Cognito identifiers.
 
 Before running product code that calls AWS, authenticate on the host:
 

@@ -36,6 +36,8 @@ services:
       - --reload
     volumes:
       - ./services/data-operations-service/src:/app/src:ro
+      - ./libs/auth/src:/app/libs/auth/src:ro
+      - ./libs/db/src:/app/libs/db/src:ro
       - ${HOME}/.aws:/home/app/.aws:ro
     restart: unless-stopped
 
@@ -147,6 +149,8 @@ services:
     command: ["python", "-m", "gridlens_data_operations_service.workers.main"]
     volumes:
       - ./services/data-operations-service/src:/app/src:ro
+      - ./libs/auth/src:/app/libs/auth/src:ro
+      - ./libs/db/src:/app/libs/db/src:ro
       - ${HOME}/.aws:/home/app/.aws:ro
     restart: unless-stopped
 

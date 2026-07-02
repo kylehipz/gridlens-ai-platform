@@ -1,0 +1,3 @@
+$kind: collection
+description: Browser-facing requests served through local Kong.
+order: 1000

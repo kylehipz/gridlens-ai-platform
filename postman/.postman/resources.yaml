@@ -1,0 +1,15 @@
+# Use this workspace to collaborate
+workspace:
+  id: 5e837e85-1abb-4ab9-8a0e-2e8c851e68bf
+
+localResources:
+  collections:
+    - ../gridlens-local.postman_collection.json
+  environments:
+    - ../gridlens-local.postman_environment.json
+
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
+cloudResources:
+  collections:
+    ../postman/collections/GridLens Local API: 1c5456da-e2d8-4fa3-ba09-2469daf0d3ff

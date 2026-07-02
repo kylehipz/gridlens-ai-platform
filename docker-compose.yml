@@ -10,8 +10,12 @@ x-api-environment: &api-environment
   AWS_REGION: ${AWS_REGION:-ap-southeast-1}
   AWS_SDK_LOAD_CONFIG: "1"
   HOME: /home/app
+  AUTH_MODE: ${AUTH_MODE:-cognito}
+  GRIDLENS_RUNTIME_MODE: ${GRIDLENS_RUNTIME_MODE:-local}
   COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-gridlens-dev-user-pool}
   COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-gridlens-dev-client}
+  COGNITO_ISSUER: ${COGNITO_ISSUER:-https://cognito-idp.ap-southeast-1.amazonaws.com/gridlens-dev-user-pool}
+  COGNITO_JWKS_URL: ${COGNITO_JWKS_URL:-https://cognito-idp.ap-southeast-1.amazonaws.com/gridlens-dev-user-pool/.well-known/jwks.json}
   S3_BUCKET_NAME: ${S3_BUCKET_NAME:-gridlens-dev-artifacts}
   SQS_QUEUE_URL: ${SQS_QUEUE_URL:-https://sqs.ap-southeast-1.amazonaws.com/000000000000/gridlens-dev-jobs}
   BEDROCK_TEXT_MODEL_ID: ${BEDROCK_TEXT_MODEL_ID:-anthropic.claude-3-haiku-20240307-v1:0}
@@ -84,6 +88,23 @@ services:
     networks:
       - gridlens-local
 
+  db-migrate:
+    build:
+      context: .
+      dockerfile: infra/db/Dockerfile
+    environment:
+      MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL:-postgresql://gridlens_migrator:gridlens_migrator_local@postgres:5432/gridlens_dev}
+      DATABASE_URL: ${SEED_DATABASE_URL:-postgresql://gridlens_app:gridlens_app_local@postgres:5432/gridlens_dev}
+      SEED_JORDAN_COGNITO_SUB: ${SEED_JORDAN_COGNITO_SUB:-dev-jordan-lee}
+      SEED_PRIYA_COGNITO_SUB: ${SEED_PRIYA_COGNITO_SUB:-dev-priya-raman}
+      SEED_MARCUS_COGNITO_SUB: ${SEED_MARCUS_COGNITO_SUB:-dev-marcus-brooks}
+      SEED_KYLE_COGNITO_SUB: ${SEED_KYLE_COGNITO_SUB:-dev-kyle}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - gridlens-local
+
   identity-tenant-service:
     build:
       context: .
@@ -93,8 +114,8 @@ services:
     volumes:
       - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     healthcheck: *api-healthcheck
     networks:
       - gridlens-local
@@ -108,8 +129,8 @@ services:
     volumes:
       - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     healthcheck: *api-healthcheck
     networks:
       - gridlens-local
@@ -123,8 +144,8 @@ services:
     volumes:
       - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     healthcheck: *api-healthcheck
     networks:
       - gridlens-local
@@ -138,8 +159,8 @@ services:
     volumes:
       - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     healthcheck: *api-healthcheck
     networks:
       - gridlens-local
@@ -153,8 +174,8 @@ services:
     volumes:
       - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     healthcheck: *api-healthcheck
     networks:
       - gridlens-local
@@ -168,8 +189,8 @@ services:
     volumes:
       - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     healthcheck: *api-healthcheck
     networks:
       - gridlens-local
@@ -183,8 +204,8 @@ services:
     volumes:
       - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     healthcheck: *api-healthcheck
     networks:
       - gridlens-local
@@ -227,8 +248,8 @@ services:
     volumes:
       - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     healthcheck: *worker-healthcheck
     networks:
       - gridlens-local
@@ -243,8 +264,8 @@ services:
     volumes:
       - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     healthcheck: *worker-healthcheck
     networks:
       - gridlens-local
@@ -259,8 +280,8 @@ services:
     volumes:
       - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     healthcheck: *worker-healthcheck
     networks:
       - gridlens-local
@@ -275,8 +296,8 @@ services:
     volumes:
       - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     healthcheck: *worker-healthcheck
     networks:
       - gridlens-local

@@ -1,0 +1,21 @@
+$kind: http-example
+request:
+  url: "{{base_url}}/__observability/fail"
+  method: GET
+  headers:
+    Accept: application/json
+    X-Request-ID: postman-observability-fail
+response:
+  statusCode: 500
+  statusText: Internal Server Error
+  headers:
+    Content-Type: application/json
+  body:
+    type: text
+    content: |-
+      {
+        "code": "internal_error",
+        "message": "An unexpected error occurred.",
+        "request_id": "postman-observability-fail"
+      }
+order: 1000

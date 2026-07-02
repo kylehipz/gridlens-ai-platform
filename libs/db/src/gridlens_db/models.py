@@ -96,6 +96,31 @@ Index(
 )
 Index("ix_tenant_memberships_user_id_status", tenant_memberships.c.user_id, tenant_memberships.c.status)
 
+platform_role_assignments = Table(
+    "platform_role_assignments",
+    metadata,
+    Column("id", uuid_pk, primary_key=True, server_default=text("gen_random_uuid()")),
+    Column("user_id", uuid_pk, ForeignKey("app.app_users.id", ondelete="CASCADE"), nullable=False),
+    Column("role", String(64), nullable=False),
+    Column("status", String(32), nullable=False, server_default=text("'active'")),
+    Column("created_at", timestamp, nullable=False, server_default=text("now()")),
+    Column("updated_at", timestamp, nullable=False, server_default=text("now()")),
+    CheckConstraint(
+        "role in ('Platform Admin', 'Platform Operator')",
+        name="platform_role_assignment_role",
+    ),
+    CheckConstraint(
+        "status in ('active', 'disabled')",
+        name="platform_role_assignment_status",
+    ),
+    UniqueConstraint("user_id", "role"),
+)
+Index(
+    "ix_platform_role_assignments_user_id_status",
+    platform_role_assignments.c.user_id,
+    platform_role_assignments.c.status,
+)
+
 file_objects = Table(
     "file_objects",
     metadata,

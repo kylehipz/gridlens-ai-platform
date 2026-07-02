@@ -1,0 +1,51 @@
+name: GridLens Local
+values:
+  - key: base_url
+    value: 'http://127.0.0.1:8000'
+  - key: identity_tenant_service_url
+    value: 'http://127.0.0.1:8000'
+  - key: data_operations_service_url
+    value: 'http://127.0.0.1:8020'
+  - key: assistant_service_url
+    value: 'http://127.0.0.1:8030'
+  - key: program_evaluation_service_url
+    value: 'http://127.0.0.1:8040'
+  - key: insights_reporting_service_url
+    value: 'http://127.0.0.1:8050'
+  - key: governance_service_url
+    value: 'http://127.0.0.1:8060'
+  - key: alerts_anomalies_service_url
+    value: 'http://127.0.0.1:8070'
+  - key: tenant_id
+    value: 10000000-0000-4000-8000-000000000001
+    description: Default seeded tenant ID; points to Northwind Utilities.
+  - key: northwind_tenant_id
+    value: 10000000-0000-4000-8000-000000000001
+    description: Seeded Northwind tenant ID.
+  - key: cascade_tenant_id
+    value: 10000000-0000-4000-8000-000000000002
+    description: Seeded Cascade tenant ID.
+  - key: user_id
+    value: 20000000-0000-4000-8000-000000000001
+    description: Default seeded user ID; points to Jordan Lee.
+  - key: cognito_authorization_url
+    value: 'https://gridlens-dev.auth.ap-southeast-1.amazoncognito.com/oauth2/authorize'
+    description: Development Cognito hosted UI authorization URL for OAuth 2.0 Authorization Code with PKCE.
+  - key: cognito_token_url
+    value: 'https://gridlens-dev.auth.ap-southeast-1.amazoncognito.com/oauth2/token'
+    description: Development Cognito token URL for OAuth 2.0 Authorization Code with PKCE.
+  - key: cognito_client_id
+    value: ''
+    description: Development Cognito app client ID; set locally.
+  - key: cognito_redirect_uri
+    value: 'https://oauth.pstmn.io/v1/callback'
+    description: Postman OAuth callback URL registered on the development Cognito app client.
+  - key: cognito_scopes
+    value: openid email profile
+    description: OAuth scopes requested from Cognito.
+  - key: observability_trace_id
+    value: ''
+    description: Trace ID captured from the Observability Smoke response.
+  - key: access_token
+    value: ''
+    description: Bearer JWT access token for authenticated API requests; set locally when auth routes are added.

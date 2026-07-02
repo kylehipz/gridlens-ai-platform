@@ -63,7 +63,8 @@ mock values only.
 | `make run-identity-tenant` | Run the identity tenant FastAPI service directly on the host without Kong. |
 | `make lint` | Run Ruff for backend Python linting plus repository hygiene checks. |
 | `make format` | Placeholder for future formatters. |
-| `make migrate` | Run Alembic migrations against `MIGRATION_DATABASE_URL` or the local migrator defaults. |
+| `make migrate` | Run Alembic migrations in the `db-migrate` Compose service. |
+| `make migrate-host` | Run Alembic migrations from the host against `MIGRATION_DATABASE_URL`. |
 | `make seed` | Load deterministic synthetic development data through SQLAlchemy upserts. |
 | `make run` | Alias for `make dev`. |
 

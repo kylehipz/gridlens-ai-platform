@@ -33,10 +33,22 @@ OBSERVABILITY_SERVICES = [
 class LocalRuntimeConfigTests(TestCase):
     def test_env_example_uses_managed_aws_placeholders_not_emulators(self) -> None:
         env_example = (ROOT / ".env.example").read_text()
+        compose = (ROOT / "docker-compose.yml").read_text()
 
         self.assertIn("AWS_PROFILE=gridlens-dev", env_example)
         self.assertIn("AWS_REGION=ap-southeast-1", env_example)
         self.assertIn("AWS_SDK_LOAD_CONFIG=1", env_example)
+        self.assertIn("AUTH_MODE=cognito", env_example)
+        self.assertIn("AUTH_MODE: ${AUTH_MODE:-cognito}", compose)
+        self.assertIn("GRIDLENS_RUNTIME_MODE: ${GRIDLENS_RUNTIME_MODE:-local}", compose)
+        self.assertIn("COGNITO_ISSUER=", env_example)
+        self.assertIn("COGNITO_JWKS_URL=", env_example)
+        self.assertIn("COGNITO_ISSUER: ${COGNITO_ISSUER:-", compose)
+        self.assertIn("COGNITO_JWKS_URL: ${COGNITO_JWKS_URL:-", compose)
+        self.assertIn("COGNITO_AUTHORIZATION_URL=", env_example)
+        self.assertIn("COGNITO_TOKEN_URL=", env_example)
+        self.assertIn("COGNITO_REDIRECT_URI=https://oauth.pstmn.io/v1/callback", env_example)
+        self.assertNotIn("DEV_AUTH_ENABLED", env_example)
         self.assertNotIn("OBJECT_STORAGE_ENDPOINT=http://localhost:9000", env_example)
         self.assertNotIn("QUEUE_ENDPOINT=http://localhost:4566", env_example)
         self.assertNotIn("LOCALSTACK", env_example.upper())
@@ -97,6 +109,19 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertIn("name: gridlens-observability-upstream", kong_config)
         self.assertIn("url: http://identity-tenant-service:8000", kong_config)
         self.assertIn("/__observability", kong_config)
+        self.assertIn("name: gridlens-identity-tenant-upstream", kong_config)
+        self.assertIn("/api/v1/me", kong_config)
+        self.assertIn(
+            "~^/api/v1/tenants(?:/[^/]+)?(?:/(?:settings|members|invitations)(?:/.*)?)?$",
+            kong_config,
+        )
+        self.assertIn("name: gridlens-data-operations-upstream", kong_config)
+        self.assertIn("url: http://data-operations-service:8000", kong_config)
+        self.assertIn(
+            "~^/api/v1/tenants/[^/]+/(files|datasets|ingestion-sources|ingestion-jobs)(/|$)",
+            kong_config,
+        )
+        self.assertIn("strip_path: false", kong_config)
         self.assertNotIn("/metrics", kong_config)
 
     def test_compose_starts_scaffold_services_and_workers(self) -> None:
@@ -104,6 +129,9 @@ class LocalRuntimeConfigTests(TestCase):
         dev_compose = (ROOT / "docker-compose.dev.yml").read_text()
         merged_compose = f"{compose}\n{dev_compose}"
 
+        self.assertIn("\n  db-migrate:\n", compose)
+        self.assertIn("dockerfile: infra/db/Dockerfile", compose)
+        self.assertIn("condition: service_completed_successfully", compose)
         self.assertNotIn("\n  api:\n", merged_compose)
         self.assertNotIn("\n  api-gateway:\n", merged_compose)
         self.assertNotIn("\n  worker:\n", merged_compose)
@@ -244,6 +272,18 @@ class LocalRuntimeConfigTests(TestCase):
                 self.assertIn("COPY libs/contracts/src ./libs/contracts/src", dockerfile)
                 self.assertIn("COPY libs/observability/src ./libs/observability/src", dockerfile)
 
+    def test_data_operations_image_includes_auth_and_db_dependencies(self) -> None:
+        dockerfile = (ROOT / "services" / "data-operations-service" / "Dockerfile").read_text()
+        dev_compose = (ROOT / "docker-compose.dev.yml").read_text()
+
+        for path in ("/app/libs/auth/src", "/app/libs/db/src"):
+            with self.subTest(path=path):
+                self.assertIn(path, dockerfile)
+        self.assertIn("COPY libs/auth/src ./libs/auth/src", dockerfile)
+        self.assertIn("COPY libs/db/src ./libs/db/src", dockerfile)
+        self.assertIn("./libs/auth/src:/app/libs/auth/src:ro", dev_compose)
+        self.assertIn("./libs/db/src:/app/libs/db/src:ro", dev_compose)
+
     def test_runtime_files_do_not_include_static_aws_credentials(self) -> None:
         secret_pattern = re.compile(
             r"AWS_(ACCESS_KEY_ID|SECRET_ACCESS_KEY|SESSION_TOKEN)\s*=|AKIA[0-9A-Z]{16}"
@@ -299,10 +339,17 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertNotIn("bootstrap-live-db:", makefile)
         self.assertNotIn("test-live-db:", makefile)
         self.assertNotIn("POSTGRES_CONTAINER_ID ?=", makefile)
+        self.assertIn("migrate:", makefile)
+        self.assertIn("run --rm db-migrate", makefile)
+        self.assertIn("migrate-host:", makefile)
+        self.assertIn("seed:", makefile)
+        self.assertIn("run --rm db-migrate python -m gridlens_db.seed", makefile)
         self.assertIn("POSTGRES_MIGRATOR_USER ?= gridlens_migrator", makefile)
         self.assertIn("POSTGRES_APP_USER ?= gridlens_app", makefile)
         self.assertIn("local_migrator_smoke_check", makefile)
         self.assertIn("local_app_role_must_not_create", makefile)
+        self.assertIn("DATABASE_URL: ${SEED_DATABASE_URL:-postgresql://gridlens_app", compose)
+        self.assertIn("SEED_KYLE_COGNITO_SUB: ${SEED_KYLE_COGNITO_SUB:-dev-kyle}", compose)
         self.assertIn("./infra/local/postgres/init:/docker-entrypoint-initdb.d:ro", compose)
         self.assertNotIn("GRIDLENS_APP_USER", compose)
         self.assertIn("CREATE ROLE gridlens_migrator", bootstrap_sql)

@@ -1,4 +1,71 @@
-from .permissions import PermissionDenied, require_role
-from .tokens import DevTokenValidator, JwksTokenValidator
+from .fastapi import (
+    AuthenticationASGIMiddleware,
+    AuthorizationDependencyError,
+    install_auth_exception_handlers,
+    install_auth_middleware,
+    principal_from_request,
+    require_platform_roles,
+    require_tenant_roles,
+)
+from .jwks import HttpJwksVerifier
+from .permissions import (
+    AuthorizationAuditSink,
+    AuthorizationDeniedAuditRecord,
+    PermissionDenied,
+    has_platform_role,
+    require_platform_role,
+    require_role,
+    require_tenant_role,
+)
+from .resolution import (
+    AppUserRecord,
+    IdentityRepository,
+    IdentityResolutionError,
+    PlatformRoleAssignmentRecord,
+    PrincipalResolver,
+    TenantMembershipRecord,
+)
+from .tokens import (
+    AuthenticationError,
+    AuthMode,
+    AuthSettings,
+    DevTokenValidator,
+    JwksTokenValidator,
+    Principal,
+    TestTokenValidator,
+    TokenValidator,
+    bearer_token,
+)
 
-__all__ = ["DevTokenValidator", "JwksTokenValidator", "PermissionDenied", "require_role"]
+__all__ = [
+    "AuthMode",
+    "AuthSettings",
+    "AuthenticationError",
+    "AuthenticationASGIMiddleware",
+    "AppUserRecord",
+    "AuthorizationAuditSink",
+    "AuthorizationDependencyError",
+    "AuthorizationDeniedAuditRecord",
+    "DevTokenValidator",
+    "HttpJwksVerifier",
+    "IdentityRepository",
+    "IdentityResolutionError",
+    "JwksTokenValidator",
+    "PermissionDenied",
+    "PlatformRoleAssignmentRecord",
+    "Principal",
+    "PrincipalResolver",
+    "TenantMembershipRecord",
+    "TestTokenValidator",
+    "TokenValidator",
+    "bearer_token",
+    "has_platform_role",
+    "install_auth_exception_handlers",
+    "install_auth_middleware",
+    "principal_from_request",
+    "require_platform_role",
+    "require_platform_roles",
+    "require_role",
+    "require_tenant_role",
+    "require_tenant_roles",
+]

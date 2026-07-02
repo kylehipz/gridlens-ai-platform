@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 from uuid import UUID
@@ -8,7 +9,14 @@ from sqlalchemy import Table, text
 from sqlalchemy.dialects.postgresql import insert
 
 from gridlens_db.database import create_database_engine
-from gridlens_db.models import app_users, audit_logs, file_objects, tenant_memberships, tenants
+from gridlens_db.models import (
+    app_users,
+    audit_logs,
+    file_objects,
+    platform_role_assignments,
+    tenant_memberships,
+    tenants,
+)
 
 NORTHWIND_TENANT_ID = UUID("10000000-0000-4000-8000-000000000001")
 CASCADE_TENANT_ID = UUID("10000000-0000-4000-8000-000000000002")
@@ -16,6 +24,12 @@ CASCADE_TENANT_ID = UUID("10000000-0000-4000-8000-000000000002")
 JORDAN_USER_ID = UUID("20000000-0000-4000-8000-000000000001")
 PRIYA_USER_ID = UUID("20000000-0000-4000-8000-000000000002")
 MARCUS_USER_ID = UUID("20000000-0000-4000-8000-000000000003")
+KYLE_USER_ID = UUID("20000000-0000-4000-8000-000000000004")
+
+JORDAN_COGNITO_SUB = os.environ.get("SEED_JORDAN_COGNITO_SUB", "dev-jordan-lee")
+PRIYA_COGNITO_SUB = os.environ.get("SEED_PRIYA_COGNITO_SUB", "dev-priya-raman")
+MARCUS_COGNITO_SUB = os.environ.get("SEED_MARCUS_COGNITO_SUB", "dev-marcus-brooks")
+KYLE_COGNITO_SUB = os.environ.get("SEED_KYLE_COGNITO_SUB", "dev-kyle")
 
 TENANT_ROWS: list[dict[str, Any]] = [
     {
@@ -37,26 +51,43 @@ TENANT_ROWS: list[dict[str, Any]] = [
 USER_ROWS: list[dict[str, Any]] = [
     {
         "id": JORDAN_USER_ID,
-        "email": "jordan.lee@example.com",
+        "email": "jordan.lee@kylehipz.dev",
         "display_name": "Jordan Lee",
         "external_auth_provider": "cognito",
-        "external_subject": "dev-jordan-lee",
+        "external_subject": JORDAN_COGNITO_SUB,
         "status": "active",
     },
     {
         "id": PRIYA_USER_ID,
-        "email": "priya.raman@example.com",
+        "email": "priya.raman@kylehipz.dev",
         "display_name": "Priya Raman",
         "external_auth_provider": "cognito",
-        "external_subject": "dev-priya-raman",
+        "external_subject": PRIYA_COGNITO_SUB,
         "status": "active",
     },
     {
         "id": MARCUS_USER_ID,
-        "email": "marcus.brooks@example.com",
+        "email": "marcus.brooks@kylehipz.dev",
         "display_name": "Marcus Brooks",
         "external_auth_provider": "cognito",
-        "external_subject": "dev-marcus-brooks",
+        "external_subject": MARCUS_COGNITO_SUB,
+        "status": "active",
+    },
+    {
+        "id": KYLE_USER_ID,
+        "email": "kyle@kylehipz.dev",
+        "display_name": "Kyle Hipz",
+        "external_auth_provider": "cognito",
+        "external_subject": KYLE_COGNITO_SUB,
+        "status": "active",
+    },
+]
+
+PLATFORM_ROLE_ASSIGNMENT_ROWS: list[dict[str, Any]] = [
+    {
+        "id": UUID("31000000-0000-4000-8000-000000000001"),
+        "user_id": KYLE_USER_ID,
+        "role": "Platform Admin",
         "status": "active",
     },
 ]
@@ -66,14 +97,14 @@ MEMBERSHIP_ROWS: list[dict[str, Any]] = [
         "id": UUID("30000000-0000-4000-8000-000000000001"),
         "tenant_id": NORTHWIND_TENANT_ID,
         "user_id": JORDAN_USER_ID,
-        "role": "Tenant Admin",
+        "role": "Analyst",
         "status": "active",
     },
     {
         "id": UUID("30000000-0000-4000-8000-000000000002"),
         "tenant_id": CASCADE_TENANT_ID,
         "user_id": JORDAN_USER_ID,
-        "role": "Analyst",
+        "role": "Viewer",
         "status": "active",
     },
     {
@@ -125,7 +156,7 @@ AUDIT_LOG_ROWS: list[dict[str, Any]] = [
     {
         "id": UUID("50000000-0000-4000-8000-000000000001"),
         "tenant_id": NORTHWIND_TENANT_ID,
-        "actor_user_id": JORDAN_USER_ID,
+        "actor_user_id": KYLE_USER_ID,
         "action": "tenant.created",
         "outcome": "success",
         "severity": "info",
@@ -137,7 +168,7 @@ AUDIT_LOG_ROWS: list[dict[str, Any]] = [
     {
         "id": UUID("50000000-0000-4000-8000-000000000002"),
         "tenant_id": CASCADE_TENANT_ID,
-        "actor_user_id": JORDAN_USER_ID,
+        "actor_user_id": KYLE_USER_ID,
         "action": "tenant.created",
         "outcome": "success",
         "severity": "info",
@@ -205,8 +236,9 @@ def seed_database() -> None:
     engine = create_database_engine()
     with engine.begin() as connection:
         _upsert_rows(connection, app_users, USER_ROWS, ["id"])
-        _seed_tenant_owned_rows(connection, tenants, TENANT_ROWS, tenant_key="id")
-        _seed_tenant_owned_rows(connection, tenant_memberships, MEMBERSHIP_ROWS)
+        _upsert_rows(connection, platform_role_assignments, PLATFORM_ROLE_ASSIGNMENT_ROWS, ["id"])
+        _upsert_rows(connection, tenants, TENANT_ROWS, ["id"])
+        _upsert_rows(connection, tenant_memberships, MEMBERSHIP_ROWS, ["id"])
         _seed_tenant_owned_rows(connection, file_objects, FILE_OBJECT_ROWS)
         _seed_tenant_owned_rows(connection, audit_logs, AUDIT_LOG_ROWS)
 

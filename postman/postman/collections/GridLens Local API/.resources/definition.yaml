@@ -1,0 +1,36 @@
+$kind: collection
+name: GridLens Local API
+description: Local Postman requests for the GridLens scaffold API. Kong owns browser-facing /api/v1 traffic; direct service health requests are included for service-local smoke checks.
+variables:
+  alerts_anomalies_service_url: http://127.0.0.1:8070
+  assistant_service_url: http://127.0.0.1:8030
+  base_url: http://127.0.0.1:8000
+  access_token: ""
+  northwind_tenant_id: 10000000-0000-4000-8000-000000000001
+  cascade_tenant_id: 10000000-0000-4000-8000-000000000002
+  tenant_id: 10000000-0000-4000-8000-000000000001
+  user_id: 20000000-0000-4000-8000-000000000001
+  cognito_authorization_url: https://gridlens-dev.auth.ap-southeast-1.amazoncognito.com/oauth2/authorize
+  cognito_token_url: https://gridlens-dev.auth.ap-southeast-1.amazoncognito.com/oauth2/token
+  cognito_client_id: ""
+  cognito_redirect_uri: https://oauth.pstmn.io/v1/callback
+  cognito_scopes: openid email profile
+  observability_trace_id: ""
+  data_operations_service_url: http://127.0.0.1:8020
+  governance_service_url: http://127.0.0.1:8060
+  identity_tenant_service_url: http://127.0.0.1:8000
+  insights_reporting_service_url: http://127.0.0.1:8050
+  program_evaluation_service_url: http://127.0.0.1:8040
+auth:
+  type: oauth2
+  credentials:
+    clientId: "{{cognito_client_id}}"
+    accessTokenUrl: "{{cognito_token_url}}"
+    authUrl: "{{cognito"
+    tokenName: gridlens_token
+    addTokenTo: header
+    scope: openid email profile
+    client_authentication: body
+    redirect_uri: "{{cognito_authorization_url}}"
+    grant_type: authorization_code_with_pkce
+    useBrowser: false

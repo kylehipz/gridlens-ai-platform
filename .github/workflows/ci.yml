@@ -24,7 +24,7 @@ jobs:
       POSTGRES_MIGRATOR_PASSWORD: gridlens_migrator_local
       POSTGRES_APP_USER: gridlens_app
       POSTGRES_APP_PASSWORD: gridlens_app_local
-      MIGRATION_DATABASE_URL: postgresql://gridlens_migrator:gridlens_migrator_local@127.0.0.1:5432/gridlens_dev
+      MIGRATION_DATABASE_URL: postgresql://gridlens_migrator:gridlens_migrator_local@postgres:5432/gridlens_dev
       DATABASE_URL: postgresql://gridlens_app:gridlens_app_local@127.0.0.1:5432/gridlens_dev
       AWS_EC2_METADATA_DISABLED: "true"
       AWS_REGION: us-east-1

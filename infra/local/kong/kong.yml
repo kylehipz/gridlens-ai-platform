@@ -21,3 +21,36 @@ services:
         methods:
           - GET
         strip_path: false
+
+  - name: gridlens-identity-tenant-upstream
+    url: http://identity-tenant-service:8000
+    routes:
+      - name: gridlens-identity-current-user
+        paths:
+          - /api/v1/me
+        methods:
+          - GET
+          - PATCH
+        strip_path: false
+      - name: gridlens-identity-tenants
+        paths:
+          - ~^/api/v1/tenants(?:/[^/]+)?(?:/(?:settings|members|invitations)(?:/.*)?)?$
+        methods:
+          - GET
+          - POST
+          - PATCH
+        strip_path: false
+        regex_priority: 50
+
+  - name: gridlens-data-operations-upstream
+    url: http://data-operations-service:8000
+    routes:
+      - name: gridlens-data-operations-tenant-resources
+        paths:
+          - ~^/api/v1/tenants/[^/]+/(files|datasets|ingestion-sources|ingestion-jobs)(/|$)
+        methods:
+          - GET
+          - POST
+          - PATCH
+        strip_path: false
+        regex_priority: 100

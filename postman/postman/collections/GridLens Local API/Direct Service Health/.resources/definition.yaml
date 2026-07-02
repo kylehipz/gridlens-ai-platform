@@ -1,0 +1,3 @@
+$kind: collection
+description: Direct FastAPI service health checks for local service development without Kong.
+order: 2000

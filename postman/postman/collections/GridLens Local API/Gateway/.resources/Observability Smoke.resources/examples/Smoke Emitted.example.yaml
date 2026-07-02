@@ -1,0 +1,27 @@
+$kind: http-example
+request:
+  url: "{{base_url}}/__observability/smoke"
+  method: GET
+  headers:
+    Accept: application/json
+    X-Request-ID: postman-observability-smoke
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: text
+    content: |-
+      {
+        "status": "ok",
+        "service": "identity-tenant-service",
+        "trace_id": "trace_id_from_runtime",
+        "span_id": "span_id_from_runtime",
+        "checks": [
+          "log",
+          "metric",
+          "trace"
+        ]
+      }
+order: 1000
