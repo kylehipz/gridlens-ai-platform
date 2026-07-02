@@ -10,8 +10,12 @@ x-api-environment: &api-environment
   AWS_REGION: ${AWS_REGION:-ap-southeast-1}
   AWS_SDK_LOAD_CONFIG: "1"
   HOME: /home/app
+  AUTH_MODE: ${AUTH_MODE:-cognito}
+  GRIDLENS_RUNTIME_MODE: ${GRIDLENS_RUNTIME_MODE:-local}
   COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-gridlens-dev-user-pool}
   COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-gridlens-dev-client}
+  COGNITO_ISSUER: ${COGNITO_ISSUER:-https://cognito-idp.ap-southeast-1.amazonaws.com/gridlens-dev-user-pool}
+  COGNITO_JWKS_URL: ${COGNITO_JWKS_URL:-https://cognito-idp.ap-southeast-1.amazonaws.com/gridlens-dev-user-pool/.well-known/jwks.json}
   S3_BUCKET_NAME: ${S3_BUCKET_NAME:-gridlens-dev-artifacts}
   SQS_QUEUE_URL: ${SQS_QUEUE_URL:-https://sqs.ap-southeast-1.amazonaws.com/000000000000/gridlens-dev-jobs}
   BEDROCK_TEXT_MODEL_ID: ${BEDROCK_TEXT_MODEL_ID:-anthropic.claude-3-haiku-20240307-v1:0}

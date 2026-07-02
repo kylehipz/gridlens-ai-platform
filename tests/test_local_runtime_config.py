@@ -33,13 +33,18 @@ OBSERVABILITY_SERVICES = [
 class LocalRuntimeConfigTests(TestCase):
     def test_env_example_uses_managed_aws_placeholders_not_emulators(self) -> None:
         env_example = (ROOT / ".env.example").read_text()
+        compose = (ROOT / "docker-compose.yml").read_text()
 
         self.assertIn("AWS_PROFILE=gridlens-dev", env_example)
         self.assertIn("AWS_REGION=ap-southeast-1", env_example)
         self.assertIn("AWS_SDK_LOAD_CONFIG=1", env_example)
         self.assertIn("AUTH_MODE=cognito", env_example)
+        self.assertIn("AUTH_MODE: ${AUTH_MODE:-cognito}", compose)
+        self.assertIn("GRIDLENS_RUNTIME_MODE: ${GRIDLENS_RUNTIME_MODE:-local}", compose)
         self.assertIn("COGNITO_ISSUER=", env_example)
         self.assertIn("COGNITO_JWKS_URL=", env_example)
+        self.assertIn("COGNITO_ISSUER: ${COGNITO_ISSUER:-", compose)
+        self.assertIn("COGNITO_JWKS_URL: ${COGNITO_JWKS_URL:-", compose)
         self.assertIn("COGNITO_AUTHORIZATION_URL=", env_example)
         self.assertIn("COGNITO_TOKEN_URL=", env_example)
         self.assertIn("COGNITO_REDIRECT_URI=https://oauth.pstmn.io/v1/callback", env_example)
