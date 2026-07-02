@@ -10,7 +10,7 @@ from gridlens_auth import (
     bearer_token,
     require_role,
 )
-from gridlens_contracts.roles import PlatformRole, Role
+from gridlens_contracts.roles import Role
 from gridlens_contracts.tenant_context import ActorContext, TenantContext
 
 
