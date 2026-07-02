@@ -348,7 +348,7 @@ class LocalRuntimeConfigTests(TestCase):
         self.assertIn("POSTGRES_APP_USER ?= gridlens_app", makefile)
         self.assertIn("local_migrator_smoke_check", makefile)
         self.assertIn("local_app_role_must_not_create", makefile)
-        self.assertIn("DATABASE_URL: ${DATABASE_URL:-postgresql://gridlens_app", compose)
+        self.assertIn("DATABASE_URL: ${SEED_DATABASE_URL:-postgresql://gridlens_app", compose)
         self.assertIn("SEED_KYLE_COGNITO_SUB: ${SEED_KYLE_COGNITO_SUB:-dev-kyle}", compose)
         self.assertIn("./infra/local/postgres/init:/docker-entrypoint-initdb.d:ro", compose)
         self.assertNotIn("GRIDLENS_APP_USER", compose)

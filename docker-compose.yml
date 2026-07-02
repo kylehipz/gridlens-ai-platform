@@ -94,7 +94,7 @@ services:
       dockerfile: infra/db/Dockerfile
     environment:
       MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL:-postgresql://gridlens_migrator:gridlens_migrator_local@postgres:5432/gridlens_dev}
-      DATABASE_URL: ${DATABASE_URL:-postgresql://gridlens_app:gridlens_app_local@postgres:5432/gridlens_dev}
+      DATABASE_URL: ${SEED_DATABASE_URL:-postgresql://gridlens_app:gridlens_app_local@postgres:5432/gridlens_dev}
       SEED_JORDAN_COGNITO_SUB: ${SEED_JORDAN_COGNITO_SUB:-dev-jordan-lee}
       SEED_PRIYA_COGNITO_SUB: ${SEED_PRIYA_COGNITO_SUB:-dev-priya-raman}
       SEED_MARCUS_COGNITO_SUB: ${SEED_MARCUS_COGNITO_SUB:-dev-marcus-brooks}
